@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "667167997355",
+    "project_id": "awaaz-4ee98",
+    "storage_bucket": "awaaz-4ee98.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667167997355:android:3ac95fdff7a3dbc73ae6ee",
+        "android_client_info": {
+          "package_name": "com.example.awaaz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBC22jHA74EIppUm8cIcf1i-Ce97PS7nUY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
