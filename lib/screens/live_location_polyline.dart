@@ -7,10 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
 import '../apiServices/api_services.dart';
 import '../apiServices/models/place_from_coordinates.dart';
-
 
 class LiveLocationPolyline extends StatefulWidget {
   const LiveLocationPolyline({super.key});
@@ -20,28 +18,21 @@ class LiveLocationPolyline extends StatefulWidget {
 }
 
 class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
-
   late GoogleMapController googleMapController;
-
   bool isSearching = false;
   PlaceFromCoordinates placeFromCoordinates = PlaceFromCoordinates();
   TextEditingController searchController = TextEditingController();
-
   CameraPosition? initialPosition;
-
   Set<Marker> markers = {};
   Set<Polyline> polyline = {};
-
   List<LatLng> polylineCoordinates = [];
   PolylinePoints polylinePoints = PolylinePoints();
-
   LatLng? originLatLng;
   LatLng? destinationLatLng;
-
   BitmapDescriptor? liveLocationMarker;
-
   String distance = "";
   String destinationAddress = "";
+  GetPlaces getPlaces = GetPlaces();
 
   @override
   void initState() {
@@ -49,142 +40,281 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     super.initState();
   }
 
-  GetPlaces getPlaces = GetPlaces();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: isSearching ? AppBar(
-        backgroundColor: Colors.greenAccent,
-        centerTitle: true,
-        leading: BackButton(
-          onPressed: () {
-            setState(() {
-              isSearching = false;
-              getPlaces.predictions = null; // Clear search predictions
-              searchController.clear();
-            });
-          },
-        ),
-        title: TextField(controller: searchController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: "Search Places....",
-          ),
-          onChanged: (String value){
-            print(value.toString());
-            ApiServices().getPlaces(value.toString()).then((value){
-              setState(() {
-                getPlaces = value;
-              });
-            });
-          },
-        ),
-      ) : AppBar(
-        centerTitle: true,
-        backgroundColor: Colors.greenAccent,
-        title: const Text("Live Location Polyline"),
-        actions: [
-          IconButton(onPressed: () {
-            setState(() {
-              isSearching = true;
-            });
-          }, icon: Icon(Icons.search))
+      body: Stack(
+        children: [
+          if (initialPosition == null)
+            const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+              ),
+            )
+          else
+            Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: initialPosition!,
+                  tiltGesturesEnabled: true,
+                  compassEnabled: true,
+                  scrollGesturesEnabled: true,
+                  zoomControlsEnabled: false,
+                  zoomGesturesEnabled: true,
+                  myLocationButtonEnabled: false,
+                  onMapCreated: (GoogleMapController controller) {
+                    googleMapController = controller;
+                  },
+                  markers: markers,
+                  polylines: polyline,
+                ),
+                // Custom AppBar
+                SafeArea(
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isSearching)
+                          _buildSearchBar()
+                        else
+                          _buildAppBarContent(),
+                      ],
+                    ),
+                  ),
+                ),
+                // Search Results
+                if (getPlaces.predictions != null)
+                  Positioned(
+                    top: 90,
+                    left: 16,
+                    right: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: getPlaces.predictions?.length ?? 0,
+                        itemBuilder: (context, index) => _buildSearchResultItem(index),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          // Bottom Sheet
+          if (distance.isNotEmpty)
+            _buildBottomSheet(),
         ],
       ),
-      body: initialPosition == null ? Center(
-        child: CircularProgressIndicator(),) :
-      Stack(
-          children: [
-            GoogleMap(
-              initialCameraPosition: initialPosition!,
-              tiltGesturesEnabled: true,
-              compassEnabled: true,
-              scrollGesturesEnabled: true,
-              zoomControlsEnabled: false,
-              zoomGesturesEnabled: true,
-              myLocationButtonEnabled: false,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          if (originLatLng != null) {
+            googleMapController.animateCamera(
+              CameraUpdate.newLatLngZoom(originLatLng!, 16),
+            );
+          }
+        },
+        backgroundColor: Colors.purple,
+        child: const Icon(Icons.my_location, color: Colors.white),
+      ),
+    );
+  }
 
-              onMapCreated: (GoogleMapController controller) {
-                googleMapController = controller;
-              },
-
-              markers: markers,
-              polylines: polyline,
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.purple),
+            onPressed: () {
+              setState(() {
+                isSearching = false;
+                getPlaces.predictions = null;
+                searchController.clear();
+              });
+            },
           ),
-
-      Visibility(
-        visible: getPlaces.predictions == null ? false:true,
-        child: Expanded(
-          child: Container(
-            color: Colors.white,
-            child: ListView.builder(
-                itemCount: getPlaces.predictions?.length??0,
-                shrinkWrap: true,
-                itemBuilder: (context, index){
-                  return ListTile(
-                    onTap: (){
-                      ApiServices().getCoordinatesFromPlaceId(getPlaces.predictions?[index].placeId??"").then((value){
-                        polylineCoordinates.clear();
-                        searchController.clear();
-
-                        destinationLatLng = LatLng(value.result?.geometry?.location?.lat??0.0,value.result?.geometry?.location?.lng??0.0);
-                        getPlaces.predictions = null;
-
-                        isSearching = false;
-
-                        markers.add(
-                            Marker(markerId: const MarkerId('destination'),
-                                position: destinationLatLng!,
-                                icon: BitmapDescriptor.defaultMarker
-                            )
-                        );
-
-                        _getPolyline();
-                        setState(() {
-
-                        });
-
-                        }).onError((error, stackTace){
-                        print("Error occured: ${error.toString()}");
-                      });
-                    },
-                    leading: Icon(Icons.location_on),
-                    title: Text(getPlaces.predictions![index].description.toString(), style: TextStyle(color: Colors.black),),
-                  );
-                }
+          Expanded(
+            child: TextField(
+              controller: searchController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: "Search Places...",
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: Colors.grey),
+              ),
+              style: const TextStyle(color: Colors.purple),
+              onChanged: (value) {
+                ApiServices().getPlaces(value).then((result) {
+                  setState(() => getPlaces = result);
+                });
+              },
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBarContent() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.purple),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Expanded(
+            child: Text(
+              "Track Location",
+              style: TextStyle(
+                color: Colors.purple,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.purple),
+            onPressed: () => setState(() => isSearching = true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResultItem(int index) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.purple.withOpacity(0.1),
+          shape: BoxShape.circle,
         ),
+        child: const Icon(Icons.location_on, color: Colors.purple),
       ),
-          ]
+      title: Text(
+        getPlaces.predictions![index].description.toString(),
+        style: const TextStyle(color: Colors.black87),
       ),
+      onTap: () => _handleLocationSelection(index),
+    );
+  }
 
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: (){
-        googleMapController.animateCamera(CameraUpdate.newLatLngZoom(originLatLng!,16));
-      },
-      child:Icon(Icons.my_location_outlined),),
-
-      bottomSheet:
-      distance == ""?const SizedBox():
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal:20, vertical: 15),
+  Widget _buildBottomSheet() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Distance: $distance Km", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),),
-            Text("Destination: $destinationAddress", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 18),),
-
+            Row(
+              children: [
+                const Icon(Icons.directions_car, color: Colors.purple),
+                const SizedBox(width: 8),
+                Text(
+                  "$distance km",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.grey),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    destinationAddress,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
+  void _handleLocationSelection(int index) {
+    ApiServices()
+        .getCoordinatesFromPlaceId(getPlaces.predictions?[index].placeId ?? "")
+        .then((value) {
+      setState(() {
+        polylineCoordinates.clear();
+        searchController.clear();
+        destinationLatLng = LatLng(
+          value.result?.geometry?.location?.lat ?? 0.0,
+          value.result?.geometry?.location?.lng ?? 0.0,
+        );
+        getPlaces.predictions = null;
+        isSearching = false;
 
+        markers.add(
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: destinationLatLng!,
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+          ),
+        );
+
+        _getPolyline();
+      });
+    }).catchError((error) {
+      print("Error occurred: ${error.toString()}");
+    });
+  }
 
 
   _getPolyline() async {
@@ -287,10 +417,10 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
 
           markers.removeWhere((element)=> element.mapsId.value.compareTo('origin')==0);
           markers.add(
-            Marker(markerId: MarkerId('origin'),
-              position: originLatLng!,
-              icon: liveLocationMarker!
-            )
+              Marker(markerId: MarkerId('origin'),
+                  position: originLatLng!,
+                  icon: liveLocationMarker!
+              )
           );
 
           if(destinationLatLng!=null){

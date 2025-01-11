@@ -1,13 +1,32 @@
 {
   "project_info": {
-    "project_number": "667167997355",
-    "project_id": "awaaz-4ee98",
-    "storage_bucket": "awaaz-4ee98.firebasestorage.app"
+    "project_number": "65671916509",
+    "project_id": "safety-app-e6b39",
+    "storage_bucket": "safety-app-e6b39.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:667167997355:android:3ac95fdff7a3dbc73ae6ee",
+        "mobilesdk_app_id": "1:65671916509:android:7fb0ce51e434e628686434",
+        "android_client_info": {
+          "package_name": "com.du.safetyapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1JY3KfNmxYbbweFyI_JBZ73uwk8ktpps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:65671916509:android:0312c83fc6f303ce686434",
         "android_client_info": {
           "package_name": "com.example.awaaz"
         }
@@ -15,7 +34,26 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBC22jHA74EIppUm8cIcf1i-Ce97PS7nUY"
+          "current_key": "AIzaSyA1JY3KfNmxYbbweFyI_JBZ73uwk8ktpps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:65671916509:android:333273083c4bb493686434",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1JY3KfNmxYbbweFyI_JBZ73uwk8ktpps"
         }
       ],
       "services": {

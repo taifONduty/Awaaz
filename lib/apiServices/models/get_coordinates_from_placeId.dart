@@ -1,5 +1,3 @@
-import 'package:awaaz/apiServices/models/place_from_coordinates.dart';
-
 class GetCoordinatesFromPlaceId{
   List<Null>? htmlAttributions;
   Result? result;
