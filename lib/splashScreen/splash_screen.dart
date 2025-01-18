@@ -1,10 +1,7 @@
 import 'dart:async';
-
-import 'package:awaaz/assistants/assistant_methods.dart';
-import 'package:awaaz/global/global.dart';
-import 'package:awaaz/screens/login_screen.dart';
-import 'package:awaaz/screens/gmap_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'login.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,32 +10,149 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
-  startTimer(){
-    Timer(Duration(seconds: 3),() async{
-        if(await firebaseAuth.currentUser != null){
-          firebaseAuth.currentUser != null ? AssistantMethods.readCurrentOnlineUserInfo() : null;
-          // Navigator.push(context, MaterialPageRoute(builder: (c)=> MainScreen()));
-        }
-        else{
-          Navigator.push(context, MaterialPageRoute(builder: (c)=> LoginScreen()));
-        }
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+
+    // Animation controller for 3 seconds
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 2.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 1.5),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    // Start the animation
+    _controller.forward();
+
+    // Navigate to the login screen after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.pushReplacement(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const LoginScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(seconds: 1),
+        ),
+      );
     });
   }
 
   @override
-  void initState(){
-    super.initState();
-
-    startTimer();
+  void dispose() {
+    _controller.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: SystemUiOverlay.values);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text("Awaaz", style: TextStyle(fontSize: 40,fontWeight: FontWeight.bold),),
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromARGB(255, 255, 254, 255),
+              Color.fromARGB(255, 242, 239, 242),
+              Color.fromARGB(255, 194, 133, 167),
+            ],
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Rotating Shield Icon
+            AnimatedBuilder(
+              animation: _rotationAnimation,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _rotationAnimation.value * 3.14, // 360-degree rotation
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    size: 100,
+                    color: Colors.purple,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            // Sliding Text for App Name
+            SlideTransition(
+              position: _slideAnimation,
+              child: const Text(
+                'Women Safety App',
+                style: TextStyle(
+                  color: Colors.purple,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            // Fading tagline
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: const Text(
+                'Your Personal Safety Companion',
+                style: TextStyle(
+                  color: Colors.purpleAccent,
+                  fontSize: 18,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            // Fading Circular Progress Indicator
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+              ),
+            ),
+            const SizedBox(height: 30),
+            // Sliding Footer Text
+            SlideTransition(
+              position: _slideAnimation,
+              child: const Text(
+                'Loading...',
+                style: TextStyle(
+                  color: Colors.purple,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
