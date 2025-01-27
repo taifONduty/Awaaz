@@ -1,3 +1,5 @@
+import 'package:awaaz/screens/chatListScreen.dart';
+import 'package:awaaz/screens/live_location_polyline.dart';
 import 'package:flutter/material.dart';
 import '../screens/connection_requests_screen.dart';
 import 'locations.dart';
@@ -11,37 +13,42 @@ class Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.4, // Set width to 70% of the screen width
+      child: Container(
+        color: Colors.white, // Change background color to white
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             const DrawerHeader(
               decoration: BoxDecoration(
-                color: Colors.purple,
+                color: Colors.purple, // Header background color
               ),
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+              child: Positioned(
+                top: 100,
+                child: Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.location_on),
-              title: const Text('Locations'),
+            _buildSidebarTile(
+              context,
+              icon: Icons.location_on,
+              title: 'Locations',
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const LocationsPage()),
+                  MaterialPageRoute(builder: (context) => const LiveLocationPolyline()),
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.movie),
-              title: const Text('Storyboard'),
+            _buildSidebarTile(
+              context,
+              icon: Icons.movie,
+              title: 'Storyboard',
               onTap: () {
                 Navigator.push(
                   context,
@@ -49,19 +56,21 @@ class Sidebar extends StatelessWidget {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.chat),
-              title: const Text('Chat'),
+            _buildSidebarTile(
+              context,
+              icon: Icons.chat,
+              title: 'Chat',
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const ChatPage()),
+                  MaterialPageRoute(builder: (context) => const ChatListScreen(isParent: false)),
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.school),
-              title: const Text('Tutorial'),
+            _buildSidebarTile(
+              context,
+              icon: Icons.school,
+              title: 'Tutorial',
               onTap: () {
                 Navigator.push(
                   context,
@@ -69,9 +78,10 @@ class Sidebar extends StatelessWidget {
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.notifications_outlined),
-              title: const Text('Connection Requests'),
+            _buildSidebarTile(
+              context,
+              icon: Icons.notifications_outlined,
+              title: 'Connection Requests',
               onTap: () {
                 Navigator.pop(context); // Close drawer
                 Navigator.push(
@@ -83,6 +93,28 @@ class Sidebar extends StatelessWidget {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarTile(BuildContext context,
+      {required IconData icon, required String title, required VoidCallback onTap}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8.0),
+          splashColor: Colors.purple.withOpacity(0.2), // Hover effect
+          onTap: onTap,
+          child: ListTile(
+            leading: Icon(icon, color: Colors.purple), // Icon with purple color
+            title: Text(
+              title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+          ),
         ),
       ),
     );

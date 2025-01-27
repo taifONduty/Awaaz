@@ -1,12 +1,18 @@
-// lib/screens/parent/live_location_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class LiveLocationScreen extends StatefulWidget {
-  const LiveLocationScreen({super.key});
+  final LatLng? initialLocation;
+  final String? childId;
+  final bool showSOSAlert;
+
+  const LiveLocationScreen({
+    super.key,
+    this.initialLocation,
+    this.childId,
+    this.showSOSAlert = false,
+  });
 
   @override
   State<LiveLocationScreen> createState() => _LiveLocationScreenState();
@@ -16,53 +22,41 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
   final _supabase = Supabase.instance.client;
   GoogleMapController? _mapController;
   Map<String, Marker> _markers = {};
-  List<String> _children = [];
   RealtimeChannel? _locationChannel;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadChildren();
-  }
-
-  Future<void> _loadChildren() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      debugPrint('Loading children for parent: ${user.uid}');
-
-      // Get children data - Changed query to check child_emails array
-      final children = await _supabase
-          .from('users')
-          .select('user_id, name')
-          .eq('is_parent', false)  // Make sure they're child users
-          .filter('email', 'in', user.email);  // Get children whose emails are in parent's child_emails
-
-      debugPrint('Found children: ${children.length}');
-
-      setState(() {
-        _children = List<String>.from(
-            children.map((child) => child['user_id'] as String));
+    _initializeMap();
+    if (widget.showSOSAlert) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showSOSAlert();
       });
-
-      // Subscribe to location updates for each child
-      for (final childId in _children) {
-        _subscribeToLocationUpdates(childId);
-      }
-
-      // Load initial locations
-      _loadInitialLocations();
-    } catch (e) {
-      debugPrint('Error loading children: $e');
     }
   }
 
-  void _subscribeToLocationUpdates(String childId) {
-    debugPrint('Subscribing to updates for child: $childId');
+  Future<void> _initializeMap() async {
+    if (widget.initialLocation != null && widget.childId != null) {
+      // Add marker for SOS location
+      _updateMarker(
+        widget.childId!,
+        widget.initialLocation!,
+        true, // SOS is active
+      );
 
+      // Subscribe to real-time updates for this specific child
+      _subscribeToLocationUpdates(widget.childId!);
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  void _subscribeToLocationUpdates(String childId) {
     _locationChannel = _supabase
-        .channel('user_locations')  // Changed channel name
+        .channel('public:user_locations')
         .onPostgresChanges(
       event: PostgresChangeEvent.update,
       schema: 'public',
@@ -73,52 +67,17 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
         value: childId,
       ),
       callback: (payload) {
-        debugPrint('Received location update: ${payload.toString()}');
-        if (payload.newRecord != null) {
-          _updateMarker(
-            payload.newRecord['user_id'] as String,
-            LatLng(
-              payload.newRecord['latitude'] as double,
-              payload.newRecord['longitude'] as double,
-            ),
-            payload.newRecord['sos_active'] as bool,
-          );
-        }
+        _updateMarker(
+          payload.newRecord['user_id'] as String,
+          LatLng(
+            payload.newRecord['latitude'] as double,
+            payload.newRecord['longitude'] as double,
+          ),
+          payload.newRecord['sos_active'] as bool,
+        );
       },
     )
         .subscribe();
-  }
-
-  Future<void> _loadInitialLocations() async {
-    try {
-      final locations = await _supabase
-          .from('user_locations')
-          .select('user_id, latitude, longitude, sos_active')
-          .filter('user_id', 'in', _children);
-
-      for (final location in locations) {
-        _updateMarker(
-          location['user_id'],
-          LatLng(location['latitude'], location['longitude']),
-          location['sos_active'],
-        );
-      }
-
-      // Center map on first child if available
-      if (locations.isNotEmpty && _mapController != null) {
-        _mapController!.animateCamera(
-          CameraUpdate.newLatLngZoom(
-            LatLng(
-              locations.first['latitude'],
-              locations.first['longitude'],
-            ),
-            15,
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error loading initial locations: $e');
-    }
   }
 
   void _updateMarker(String childId, LatLng position, bool sosActive) {
@@ -142,6 +101,24 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
     }
   }
 
+  void _showSOSAlert() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('SOS Alert!'),
+        content: const Text('Child has triggered an emergency alert!'),
+        backgroundColor: Colors.red[100],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Acknowledge'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,17 +126,18 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
         title: const Text('Live Location'),
         backgroundColor: const Color(0xFF4B0082),
       ),
-      body: GoogleMap(
-        initialCameraPosition: const CameraPosition(
-          target: LatLng(0, 0),
-          zoom: 2,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : GoogleMap(
+        initialCameraPosition: CameraPosition(
+          target: widget.initialLocation ?? const LatLng(0, 0),
+          zoom: 15,
         ),
         markers: _markers.values.toSet(),
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
         onMapCreated: (controller) {
           _mapController = controller;
-          _loadInitialLocations();
         },
       ),
     );

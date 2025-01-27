@@ -318,25 +318,28 @@ class _ContactsPageState extends State<ContactsPage> {
                       firstPhone ?? 'No number',
                       style: const TextStyle(fontSize: 12),
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.phone, color: Colors.green[600]),
-                          onPressed: () => _makePhoneCall(firstPhone),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.message, color: Colors.blue[600]),
-                          onPressed: () => _sendMessage(firstPhone),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            isFavorite ? Icons.star : Icons.star_border,
-                            color: isFavorite ? Colors.amber : Colors.grey,
+                    trailing: Padding(
+                      padding: const EdgeInsets.only(left: 20.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.phone, color: Colors.green[600]),
+                            onPressed: () => _makePhoneCall(firstPhone),
                           ),
-                          onPressed: () => _toggleFavorite(contact),
-                        ),
-                      ],
+                          IconButton(
+                            icon: Icon(Icons.message, color: Colors.blue[600]),
+                            onPressed: () => _sendMessage(firstPhone),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.star : Icons.star_border,
+                              color: isFavorite ? Colors.amber : Colors.grey,
+                            ),
+                            onPressed: () => _toggleFavorite(contact),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },

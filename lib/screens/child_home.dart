@@ -2,16 +2,16 @@ import 'package:awaaz/screens/live_location_polyline.dart';
 import 'package:awaaz/screens/profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// import 'package:myapp/profile_screen.dart';
-// import 'package:myapp/widgets/home_widgets/emergencies/IncomingCallPage.dart';
-// import 'package:myapp/widgets/home_widgets/location/location_screen.dart';
-// Required for backdropFilter (glassmorphism effect)
+import '../assistants/IncomingCallPage.dart';
 import '../sidebar/sidebar.dart';
-import '../widgets/home_widgets/emergencies/IncomingCallPage.dart';
+import 'chatListScreen.dart';
 import 'contacts.dart';
+import 'forum_screen.dart';
 import 'importantContacts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 // import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 
 class ChildHomeScreen extends StatefulWidget {
@@ -22,10 +22,9 @@ class ChildHomeScreen extends StatefulWidget {
 }
 
 class _ChildHomeScreenState extends State<ChildHomeScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey =
-  GlobalKey<ScaffoldState>(); // Added scaffold key
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // Added scaffold key
   int _sosStage = 0;
-
+  String? _profileImageUrl;
 
   void _startLocationUpdates() {
     // Start periodic location updates
@@ -204,6 +203,127 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
     // await FlutterPhoneDirectCaller.callNumber(number);
   }
 
+  Widget _buildGlassMorphicButton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 50),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        color: Colors.white.withOpacity(0.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ContactsPage()),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+        ),
+        child: const Text(
+          'Contacts',
+          style: TextStyle(
+            color: Colors.purple,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          child: ElevatedButton(
+            onPressed: onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: const CircleBorder(),
+              padding: const EdgeInsets.all(16),
+              elevation: 4,
+              shadowColor: Colors.purple.withOpacity(0.3),
+            ),
+            child: Icon(
+              icon,
+              size: 24,
+              color: const Color.fromARGB(255, 183, 51, 183),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color.fromARGB(255, 93, 24, 101),
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  void _initializePowerButtonSOS() async {
+    var platform = MethodChannel('com.example.awaaz/sos');
+
+    try {
+      await platform.invokeMethod('startSOSService');
+
+      EventChannel('com.example.awaaz/sos_events')
+          .receiveBroadcastStream()
+          .listen((event) {
+        if (event == 'sos_triggered') {
+          _handleSosTap();
+        }
+      });
+    } catch (e) {
+      debugPrint('Error initializing SOS service: $e');
+    }
+  }
+  @override
+  void initState() {
+    super.initState();
+    _initializePowerButtonSOS();
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final supabase = Supabase.instance.client;
+      final userData = await supabase
+          .from('users')
+          .select('profile_image_url')
+          .eq('user_id', user.uid)
+          .single();
+
+      if (mounted) {
+        setState(() {
+          _profileImageUrl = userData['profile_image_url'] ?? user.photoURL;
+        });
+      }
+    } catch (e) {
+      print('Error loading profile image: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,7 +339,7 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
               'Awaaz',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 30,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -236,20 +356,46 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
           ),
           actions: [
             Padding(
-              padding: const EdgeInsets.only(top: 20.0, right: 10),
+              padding: const EdgeInsets.only(top: 10.0, right: 0),
               child: CircleAvatar(
-                radius: 25,
+                radius: 40,
                 backgroundColor: Colors.white,
-                child: IconButton(
-                  icon: const Icon(Icons.person),
-                  iconSize: 30,
-                  color: const Color.fromARGB(255, 244, 54, 222),
-                  onPressed: () {
+                child: GestureDetector(
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                    );
+                    ).then((_) => _loadProfileImage());
                   },
+                  child: CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white,
+                    child: _profileImageUrl != null ? ClipRRect(
+                      borderRadius: BorderRadius.circular(40),
+                      child: Image.network(
+                        _profileImageUrl!,
+                        width: 45,
+                        height: 45,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.person,
+                          size: 45,
+                          color: Color.fromARGB(255, 244, 54, 222),
+                        ),
+                      ),
+                    )
+                        : Container(
+                      width: 45,
+                      height: 45,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: AssetImage('assets/icons/default_profile.png'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -259,19 +405,19 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
       drawer: const Sidebar(), // Sidebar added as a drawer
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color.fromARGB(255, 255, 254, 255),
-                  Color.fromARGB(255, 242, 239, 242),
-                  Color.fromARGB(255, 194, 133, 167),
-                ],
-              ),
-            ),
-          ),
+          // Container(
+          //   decoration: const BoxDecoration(
+          //     gradient: LinearGradient(
+          //       begin: Alignment.topCenter,
+          //       end: Alignment.bottomCenter,
+          //       colors: [
+          //         Color.fromARGB(255, 255, 254, 255),
+          //         Color.fromARGB(255, 242, 239, 242),
+          //         Color.fromARGB(255, 194, 133, 167),
+          //       ],
+          //     ),
+          //   ),
+          // ),
           Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -361,12 +507,17 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             _buildBottomButton(
-                              icon: Icons.favorite,
+                              icon: Icons.crisis_alert,
                               label: 'Help Alert',
-                              onPressed: _callNumber,
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const ForumScreen()),
+                                  );
+                                }
                             ),
                             _buildBottomButton(
-                              icon: Icons.track_changes,
+                              icon: Icons.add_location_outlined,
                               label: 'Live Tracker',
                               onPressed: () {
                                 Navigator.push(
@@ -384,10 +535,22 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => const IncomingCallPage()),
+                                      builder: (context) => IncomingCallPage()),
                                 ).then((_) {
                                   // stopRingtone(); // Stop the ringtone when navigating back from IncomingCallPage
                                 });
+                              },
+                            ),
+                            _buildBottomButton(
+                              icon: Icons.chat,
+                              label: 'Chat',
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ChatListScreen(isParent: false),
+                                  ),
+                                );
                               },
                             ),
                           ],
@@ -408,68 +571,6 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
             child: ImportantContactsSheet(),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return Column(
-      children: [
-        ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            shape: const CircleBorder(),
-            padding: const EdgeInsets.all(20),
-          ),
-          child: Icon(icon,
-              size: 20, color: const Color.fromARGB(255, 183, 51, 183)),
-        ),
-        const SizedBox(height: 1),
-        Text(
-          label,
-          style: const TextStyle(
-              fontSize: 14, color: Color.fromARGB(255, 93, 24, 101)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGlassMorphicButton() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 50),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        color: Colors.white.withOpacity(0.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ContactsPage()),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-        ),
-        child: const Text(
-          'Contacts',
-          style: TextStyle(
-            color: Colors.purple,
-            fontSize: 16,
-          ),
-        ),
       ),
     );
   }

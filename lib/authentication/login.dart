@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../homeRouter.dart';
 import 'forgot_password.dart';
@@ -15,9 +16,64 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+
+
+  Future<void> signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? gUser = await GoogleSignIn().signIn();
+      if (gUser == null) return;
+
+      final GoogleSignInAuthentication gAuth = await gUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: gAuth.accessToken,
+        idToken: gAuth.idToken,
+      );
+
+      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final supabase = Supabase.instance.client;
+
+      try {
+        final userRecord = await supabase
+            .from('users')
+            .select()
+            .eq('user_id', userCredential.user!.uid)
+            .single();
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => userRecord == null
+                  ? const FirstTimeUserForm()
+                  : const HomeRouter(),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const FirstTimeUserForm()),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   Future<void> _signIn() async {
     if (_emailController.text.trim().isEmpty ||
@@ -114,11 +170,10 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Container(
         height: double.infinity,
         width: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
             fit: BoxFit.cover,
-            image: NetworkImage(
-                'https://img.freepik.com/premium-photo/unity-strength-women-silhouettes-purplepink-wash_818261-31532.jpg'),
+            image: AssetImage('assets/logo/img.png'),
           ),
         ),
         child: Stack(
@@ -131,10 +186,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 margin: const EdgeInsets.only(top: 50),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    image: AssetImage('assets/cartoon.jpg'),
-                  ),
+                  // image: DecorationImage(
+                  //   fit: BoxFit.cover,
+                  //   image: AssetImage('assets/cartoon.jpg'),
+                  // ),
                 ),
               ),
             ),
@@ -290,6 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      ElevatedButton(onPressed: ()=> signInWithGoogle(), child:Text("Sign in with Google"))
                     ],
                   ),
                 ),
