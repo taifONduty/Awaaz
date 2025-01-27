@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 
 class PopUpDialog extends StatefulWidget {
+  const PopUpDialog({super.key});
+
   @override
   _PopUpDialogState createState() => _PopUpDialogState();
 }
