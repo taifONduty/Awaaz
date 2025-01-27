@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../global/global.dart';
-import 'gmap_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -104,6 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if(EmailValidator.validate(text)== true){
                                   return null;
                                 }
+                                return null;
                               },
                               onChanged: (text)=> setState(() {
                                 emailTextEditingController.text = text;
@@ -146,6 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if(text.length<6){
                                   return "Please enter a valid password";
                                 }
+                                return null;
                               },
                               onChanged: (text)=> setState(() {
                                 passwordTextEditingController.text = text;

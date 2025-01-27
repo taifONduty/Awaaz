@@ -1,6 +1,5 @@
 import 'package:awaaz/global/global.dart';
 import 'package:awaaz/screens/login_screen.dart';
-import 'package:awaaz/screens/gmap_screen.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -123,6 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               else if(text.length > 50){
                                 return "Enter a short name";
                               }
+                              return null;
                             },
                             onChanged: (text)=> setState(() {
                               nameTextEditingController.text = text;
@@ -156,6 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if(EmailValidator.validate(text)== true){
                                 return null;
                               }
+                              return null;
                             },
                             onChanged: (text)=> setState(() {
                               emailTextEditingController.text = text;
@@ -209,6 +210,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if(text.length<2){
                                 return "Please enter a valid address";
                               }
+                              return null;
                             },
                             onChanged: (text)=> setState(() {
                               addressTextEditingController.text = text;
@@ -251,6 +253,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if(text.length<6){
                                 return "Please enter a valid password";
                               }
+                              return null;
                             },
                             onChanged: (text)=> setState(() {
                               passwordTextEditingController.text = text;
@@ -292,6 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if(text != passwordTextEditingController.text){
                                 return "Password doesn't match";
                               }
+                              return null;
                             },
                             onChanged: (text)=> setState(() {
                               confirmTextEditingController.text = text;

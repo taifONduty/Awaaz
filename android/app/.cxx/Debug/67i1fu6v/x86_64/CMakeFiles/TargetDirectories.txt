@@ -1,0 +1,2 @@
+/home/autoshy/Desktop/Awaaz/android/app/.cxx/Debug/67i1fu6v/x86_64/CMakeFiles/edit_cache.dir
+/home/autoshy/Desktop/Awaaz/android/app/.cxx/Debug/67i1fu6v/x86_64/CMakeFiles/rebuild_cache.dir

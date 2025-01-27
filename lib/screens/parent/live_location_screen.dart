@@ -15,7 +15,7 @@ class LiveLocationScreen extends StatefulWidget {
 class _LiveLocationScreenState extends State<LiveLocationScreen> {
   final _supabase = Supabase.instance.client;
   GoogleMapController? _mapController;
-  Map<String, Marker> _markers = {};
+  final Map<String, Marker> _markers = {};
   List<String> _children = [];
   RealtimeChannel? _locationChannel;
 
@@ -74,17 +74,15 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
       ),
       callback: (payload) {
         debugPrint('Received location update: ${payload.toString()}');
-        if (payload.newRecord != null) {
-          _updateMarker(
-            payload.newRecord['user_id'] as String,
-            LatLng(
-              payload.newRecord['latitude'] as double,
-              payload.newRecord['longitude'] as double,
-            ),
-            payload.newRecord['sos_active'] as bool,
-          );
-        }
-      },
+        _updateMarker(
+          payload.newRecord['user_id'] as String,
+          LatLng(
+            payload.newRecord['latitude'] as double,
+            payload.newRecord['longitude'] as double,
+          ),
+          payload.newRecord['sos_active'] as bool,
+        );
+            },
     )
         .subscribe();
   }

@@ -1,8 +1,6 @@
-import 'package:awaaz/apiServices/models/get_coordinates_from_placeId.dart';
 import 'package:awaaz/apiServices/models/get_places.dart';
 import 'package:awaaz/assistants/marker_icon.dart';
 import 'package:awaaz/global/map_key.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
@@ -328,9 +326,9 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     polylineCoordinates.clear();
 
     if (result.points.isNotEmpty) {
-      result.points.forEach((PointLatLng point) {
+      for (var point in result.points) {
         polylineCoordinates.add(LatLng(point.latitude, point.longitude));
-      });
+      }
 
       // Calculate total distance
       double totalDistance = 0.0;

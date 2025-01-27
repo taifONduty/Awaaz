@@ -117,10 +117,6 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
 
       debugPrint('Found parent data: ${parentData.toString()}');
 
-      if (parentData == null) {
-        throw Exception('No parent found for this child');
-      }
-
       // Prepare notification payload
       final payload = {
         'childId': user.uid,
