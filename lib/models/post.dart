@@ -13,6 +13,8 @@ class Post {
   final List<String> tags;
   final bool isPinned;
   final DateTime createdAt;
+  final GeoPoint? location;
+  final String? locationName;
 
   Post({
     required this.id,
@@ -26,6 +28,8 @@ class Post {
     this.tags = const [],
     this.isPinned = false,
     required this.createdAt,
+    this.location,
+    this.locationName,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -52,6 +56,8 @@ class Post {
           : DateTime.parse(json['createdAt']),
       tags: List<String>.from(json['tags'] ?? []),
       isPinned: json['isPinned'] ?? false,
+      location: json['location'] as GeoPoint?,
+      locationName: json['locationName'] as String?,
     );
 
   }
@@ -69,6 +75,8 @@ class Post {
       'tags': tags,
       'isPinned': isPinned,
       'createdAt': Timestamp.fromDate(createdAt),
+      'location': location,
+      'locationName': locationName,
     };
   }
 }

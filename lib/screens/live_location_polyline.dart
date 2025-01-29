@@ -2,6 +2,7 @@ import 'package:awaaz/apiServices/models/get_coordinates_from_placeId.dart';
 import 'package:awaaz/apiServices/models/get_places.dart';
 import 'package:awaaz/assistants/marker_icon.dart';
 import 'package:awaaz/global/map_key.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -39,6 +40,8 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
   bool isSelectOnMap = false;
   Marker? temporaryDestinationMarker;
   String _mapStyle = '';
+  Set<Marker> incidentMarkers = {};
+  bool incidentsLoaded = false;
 
   @override
   void initState() {
@@ -50,6 +53,218 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     await _checkLocationService();
     await _loadMapStyle();
     await _determinePosition();
+    await _loadIncidents();
+  }
+
+  Future<void> _loadIncidents() async {
+    try {
+      // Create custom marker icon for incidents
+      final BitmapDescriptor customMarker = await BitmapDescriptor.asset(
+        const ImageConfiguration(size: Size(40, 40)),
+        'assets/logo/alert_marker.png',  // Add this image to your assets
+      ).catchError((error) {
+        // Fallback to a custom colored marker if image loading fails
+        return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRose);
+      });
+
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('tags', arrayContains: 'Discussion')
+          .get();
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final location = data['location'] as GeoPoint?;
+
+        if (location != null) {
+          final marker = Marker(
+            markerId: MarkerId('incident_${doc.id}'),
+            position: LatLng(location.latitude, location.longitude),
+            icon: customMarker,
+            onTap: () {
+              _showIncidentDetails(data);
+            },
+          );
+
+          setState(() {
+            markers.add(marker);
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading incidents: $e');
+    }
+  }
+
+  void _showIncidentDetails(Map<String, dynamic> data) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Colors.purple,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(data['authorAvatar'] ?? ''),
+                    backgroundColor: Colors.white,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data['title'] ?? 'Incident Report',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Reported by ${data['authorName'] ?? 'Anonymous'}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.purple,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          data['locationName'] ?? 'Unknown Location',
+                          style: const TextStyle(
+                            color: Colors.purple,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    data['content'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatTimestamp(data['createdAt']),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          if (data['location'] != null) {
+                            _navigateToIncident(
+                              LatLng(
+                                data['location'].latitude,
+                                data['location'].longitude,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        icon: const Icon(Icons.directions),
+                        label: const Text('Navigate'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+
+    final date = timestamp is Timestamp ? timestamp.toDate() : DateTime.now();
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  void _navigateToIncident(LatLng location) {
+    setState(() {
+      destinationLatLng = location;
+      _getPolyline();
+    });
   }
 
   Future<void> _loadMapStyle() async {
@@ -127,6 +342,7 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
                     myLocationButtonEnabled: false,
                     onMapCreated: (GoogleMapController controller) {
                       googleMapController = controller;
+                      _loadIncidents();
                       // controller.setMapStyle(_mapStyle);
                     },
                     markers: {
@@ -555,19 +771,43 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
       liveLocationMarker = BitmapDescriptor.defaultMarker;
     }
 
+    void _updateMarkers() {
+      setState(() {
+        // Remove only the origin marker
+        markers.removeWhere((element) => element.markerId.value == 'origin');
+
+        // Add back the origin marker
+        if (originLatLng != null) {
+          markers.add(
+            Marker(
+              markerId: const MarkerId('origin'),
+              position: originLatLng!,
+              icon: liveLocationMarker ?? BitmapDescriptor.defaultMarker,
+            ),
+          );
+        }
+
+        // Add destination marker if exists
+        if (destinationLatLng != null && temporaryDestinationMarker == null) {
+          markers.add(
+            Marker(
+              markerId: const MarkerId('destination'),
+              position: destinationLatLng!,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+            ),
+          );
+        }
+      });
+    }
+
     _geolocatorPlatform.getPositionStream(locationSettings: locationSettings).listen(
           (Position? position) {
         if (position != null) {
           originLatLng = LatLng(position.latitude, position.longitude);
           initialPosition = CameraPosition(target: originLatLng!, zoom: 15);
 
-          markers.removeWhere((element)=> element.mapsId.value.compareTo('origin')==0);
-          markers.add(
-              Marker(markerId: MarkerId('origin'),
-                  position: originLatLng!,
-                  icon: liveLocationMarker!
-              )
-          );
+          _updateMarkers();
+
 
           if(destinationLatLng!=null){
             _getPolyline();
