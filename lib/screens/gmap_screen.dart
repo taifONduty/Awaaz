@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:awaaz/apiServices/api_services.dart';
 import 'package:awaaz/apiServices/models/place_from_coordinates.dart';
-import 'package:awaaz/assistants/assistant_methods.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:location/location.dart' as loc;
 import 'package:flutter/material.dart';
@@ -27,7 +26,7 @@ class _MainScreenState extends State<MainScreen> {
   GoogleMapController? newGoogleMapController;
 
 
-  GlobalKey<ScaffoldState> _scaffoldState = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldState> _scaffoldState = GlobalKey<ScaffoldState>();
 
   double searchLocationContainerHeight = 220;
   double waitingResponseContainerHeight = 0;

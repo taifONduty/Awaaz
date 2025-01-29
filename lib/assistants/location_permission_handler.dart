@@ -5,13 +5,13 @@ import 'package:geolocator/geolocator.dart';
 /// When the location services are not enabled or permissions
 /// are denied the `Future` will return an error.
 Future<Position> determinePosition() async {
-  final GeolocatorPlatform _geolocatorPlatform = GeolocatorPlatform.instance;
+  final GeolocatorPlatform geolocatorPlatform = GeolocatorPlatform.instance;
 
   bool serviceEnabled;
   LocationPermission permission;
 
   // Test if location services are enabled.
-  serviceEnabled = await _geolocatorPlatform.isLocationServiceEnabled();
+  serviceEnabled = await geolocatorPlatform.isLocationServiceEnabled();
   if (!serviceEnabled) {
     // Location services are not enabled don't continue
     // accessing the position and request users of the
@@ -19,9 +19,9 @@ Future<Position> determinePosition() async {
     return Future.error('Location services are disabled.');
   }
 
-  permission = await _geolocatorPlatform.checkPermission();
+  permission = await geolocatorPlatform.checkPermission();
   if (permission == LocationPermission.denied) {
-    permission = await _geolocatorPlatform.requestPermission();
+    permission = await geolocatorPlatform.requestPermission();
     if (permission == LocationPermission.denied) {
       // Permissions are denied, next time you could try
       // requesting permissions again (this is also where
@@ -40,5 +40,5 @@ Future<Position> determinePosition() async {
 
   // When we reach here, permissions are granted and we can
   // continue accessing the position of the device.
-  return await _geolocatorPlatform.getCurrentPosition();
+  return await geolocatorPlatform.getCurrentPosition();
 }

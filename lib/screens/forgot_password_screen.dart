@@ -86,6 +86,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                                 if(EmailValidator.validate(text)== true){
                                   return null;
                                 }
+                                return null;
                               },
                               onChanged: (text)=> setState(() {
                                 emailTextEditingController.text = text;

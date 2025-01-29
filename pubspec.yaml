@@ -56,7 +56,7 @@ dependencies:
   geocoder2: ^1.4.0
   flutter_geofire: ^2.0.4
   flutter_polyline_points: ^1.0.0
-  location: ^7.0.1
+  location: ^8.0.0
   smooth_star_rating_nsafe: ^1.0.0+1
   animated_text_kit: ^4.2.2
   svg_flutter: ^0.0.1
