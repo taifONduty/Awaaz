@@ -36,14 +36,14 @@ class ChatListScreen extends StatelessWidget {
           ),
         ),
         backgroundColor: const Color(0xFF4B0082),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // Implement search functionality
-            },
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.search),
+        //     onPressed: () {
+        //       // Implement search functionality
+        //     },
+        //   ),
+        // ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: supabase

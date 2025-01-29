@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MyChildrenScreen extends StatefulWidget {
   const MyChildrenScreen({super.key});
@@ -50,6 +51,75 @@ class _MyChildrenScreenState extends State<MyChildrenScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Widget _buildChildAvatar(Map<String, dynamic> child) {
+    final profileImageUrl = child['profile_image_url'];
+    final name = child['name'] ?? 'Unknown';
+
+    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: 30,
+        backgroundColor: Colors.purple[100],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: CachedNetworkImage(
+            imageUrl: profileImageUrl,
+            width: 60,
+            height: 60,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.purple[200]!),
+            ),
+            errorWidget: (context, url, error) => Text(
+              name.substring(0, 1).toUpperCase(),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4B0082),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Fallback to initials avatar
+    return CircleAvatar(
+      backgroundColor: Colors.purple[100],
+      radius: 30,
+      child: Text(
+        name.substring(0, 1).toUpperCase(),
+        style: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF4B0082),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConnectionStatus(Map<String, dynamic> child) {
+    final isOnline = child['is_online'] ?? false;
+    final lastSeen = child['last_seen'];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isOnline ? Colors.green[100] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
+      child: Text(
+        isOnline ? 'Online' : 'Offline',
+        style: TextStyle(
+          color: isOnline ? Colors.green : Colors.grey,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   @override
@@ -121,18 +191,7 @@ class _MyChildrenScreenState extends State<MyChildrenScreen> {
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: CircleAvatar(
-                backgroundColor: Colors.purple[100],
-                radius: 30,
-                child: Text(
-                  child['name']?.substring(0, 1).toUpperCase() ?? '?',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4B0082),
-                  ),
-                ),
-              ),
+              leading: _buildChildAvatar(child),
               title: Text(
                 child['name'] ?? 'Unknown',
                 style: const TextStyle(
@@ -160,23 +219,7 @@ class _MyChildrenScreenState extends State<MyChildrenScreen> {
                   ),
                 ],
               ),
-              trailing: Container(
-                decoration: BoxDecoration(
-                  color: Colors.green[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                child: const Text(
-                  'Connected',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              trailing: _buildConnectionStatus(child),
             ),
           );
         },
