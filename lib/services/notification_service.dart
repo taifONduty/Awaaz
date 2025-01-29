@@ -1,47 +1,66 @@
-// lib/services/notification_service.dart
-
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../screens/parent/live_location_screen.dart';
 
 class NotificationService {
-  final _fcm = FirebaseMessaging.instance;
-  final _supabase = Supabase.instance.client;
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
 
-  Future<void> initialize() async {
-    // Get FCM token
-    String? token = await _fcm.getToken();
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-    if (token != null) {
-      // Store token in Supabase
-      await _updateFCMToken(token);
-    }
+  Future<void> initialize(BuildContext context) async {
+    // Request permission for iOS devices
+    await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-    // Listen to token refresh
-    _fcm.onTokenRefresh.listen(_updateFCMToken);
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Got a message whilst in the foreground!');
-      print('Message data: ${message.data}');
-
-      if (message.notification != null) {
-        print('Message also contained a notification: ${message.notification}');
-        // Show local notification
-        // You might want to add flutter_local_notifications package for this
-      }
+      _handleMessage(message, context);
     });
-  }
 
-  Future<void> _updateFCMToken(String token) async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user != null) {
-        await _supabase.from('users').update({
-          'fcm_token': token,
-        }).eq('user_id', user.id);
-      }
-    } catch (e) {
-      print('Error updating FCM token: $e');
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleMessage(message, context);
+    });
+
+    RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleMessage(initialMessage, context);
     }
   }
+
+  void _handleMessage(RemoteMessage message, BuildContext context) {
+    if (message.data['type'] == 'sos_alert') {
+      final double? latitude = double.tryParse(message.data['latitude'] ?? '');
+      final double? longitude = double.tryParse(message.data['longitude'] ?? '');
+      final String? childId = message.data['childId'];
+
+      if (latitude != null && longitude != null && childId != null) {
+        _navigateToLocationScreen(context, latitude, longitude, childId);
+      }
+    }
+  }
+
+  void _navigateToLocationScreen(BuildContext context, double latitude, double longitude, String childId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LiveLocationScreen(
+          initialLocation: LatLng(latitude, longitude),
+          childId: childId,
+          showSOSAlert: true,
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // await Firebase.initializeApp();
+  print('Handling a background message: ${message.messageId}');
 }

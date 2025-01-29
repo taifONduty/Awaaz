@@ -1,83 +1,342 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:svg_flutter/svg_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:svg_flutter/svg.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../authentication/login.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
   @override
-   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true, // Allows the background to extend behind the AppBar
-      appBar: AppBar(
-        backgroundColor: Colors.purple, // Transparent AppBar
-        elevation: 0, // Removes AppBar shadow
-        title: const Text(
-          "Profile", 
-          style: TextStyle(color: Colors.white)
-        ),
-        iconTheme: const IconThemeData(color: Color.fromARGB(255, 255, 255, 255)), // Makes back button white
-      ),
-      body: Stack(
-        children: [
-          // Full-screen gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color.fromARGB(255, 255, 254, 255),
-                  Color.fromARGB(255, 242, 239, 242),
-                  Color.fromARGB(255, 194, 133, 167),
-                ],
-              ),
-            ),
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _profileImageUrl;
+  bool _isLoading = false;
+
+  String? _userName;
+  String? _userEmail;
+  String? _userPhone;
+  String? _userAddress;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final supabase = Supabase.instance.client;
+      final userData = await supabase
+          .from('users')
+          .select()
+          .eq('user_id', user.uid)
+          .single();
+
+      setState(() {
+        _userName = userData['name'];
+        _userEmail = user.email;
+        _userPhone = userData['phone'];
+        _userAddress = userData['address'];
+        _isLoadingProfile = false;
+      });
+    } catch (e) {
+      print('Error loading user profile: $e');
+      setState(() => _isLoadingProfile = false);
+    }
+  }
+
+  Future<void> _loadProfileImage() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // First try Firebase Auth photo URL
+      if (user.photoURL != null) {
+        setState(() => _profileImageUrl = user.photoURL);
+        return;
+      }
+
+      // If not found, check Supabase
+      final userData = await Supabase.instance.client
+          .from('users')
+          .select('profile_image_url')
+          .eq('user_id', user.uid)
+          .single();
+
+      if (userData != null && userData['profile_image_url'] != null) {
+        setState(() => _profileImageUrl = userData['profile_image_url']);
+      }
+    } catch (e) {
+      print('Error loading profile image: $e');
+    }
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error signing out: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateProfileImage(String imagePath) async {
+    setState(() => _isLoading = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child(user.uid)
+          .child('profile_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+      await storageRef.putFile(File(imagePath));
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // Update both Firebase and Supabase
+      await Future.wait([
+        user.updatePhotoURL(downloadUrl),
+        Supabase.instance.client
+            .from('users')
+            .update({
+          'profile_image_url': downloadUrl,
+        })
+            .match({'user_id': user.uid})
+      ]);
+
+      setState(() => _profileImageUrl = downloadUrl);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile image: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      if (!await file.exists()) {
+        throw Exception('Selected image file not found');
+      }
+
+      await _updateProfileImage(pickedFile.path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
           ),
-          // Content in SafeArea
-          SafeArea(
-            child: SingleChildScrollView(
+        );
+      }
+      print('Error in _pickImage: $e');
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Image Source'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        title: const Text("Profile"),
+      ),
+      body: _isLoadingProfile ?const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            ProfilePic(
+              imageUrl: _profileImageUrl,
+              isLoading: _isLoading,
+              onImageTap: _showImageSourceDialog,
+            ),
+            const SizedBox(height: 20),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
+                  _buildUserInfoCard(),
                   const SizedBox(height: 20),
-                  const ProfilePic(),
-                  const SizedBox(height: 20),
-                  ProfileMenu(
-                    text: "My Account",
-                    icon: "icons/account.svg",
-                    press: () => {},
-                  ),
-                  ProfileMenu(
-                    text: "Emergency Contacts",
-                    icon: "icons/id.svg",
-                    press: () {},
-                  ),
-                  ProfileMenu(
-                    text: "Notifications",
-                    icon: "icons/notifications.svg",
-                    press: () {},
-                  ),
-                  ProfileMenu(
-                    text: "Settings",
-                    icon: "icons/settings.svg",
-                    press: () {},
-                  ),
-                  ProfileMenu(
-                    text: "Log Out",
-                    icon: "icons/logout.svg",
-                    press: () {},
-                  ),
                 ],
               ),
             ),
+
+            ProfileMenu(
+              text: "Emergency Contacts",
+              icon: "assets/icons/id.svg",
+              press: () {},
+            ),
+            ProfileMenu(
+              text: "Notifications",
+              icon: "assets/icons/notifications.svg",
+              press: () {},
+            ),
+            ProfileMenu(
+              text: "Settings",
+              icon: "assets/icons/settings.svg",
+              press: () {},
+            ),
+            ProfileMenu(
+              text: "Log Out",
+              icon: "assets/icons/logout.svg",
+              press: () => _handleLogout(context),
+
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildUserInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F6F9),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow(Icons.person, "Name", _userName ?? "Not set"),
+          const SizedBox(height: 15),
+          _buildInfoRow(Icons.email, "Email", _userEmail ?? "Not set"),
+          const SizedBox(height: 15),
+          _buildInfoRow(Icons.phone, "Phone", _userPhone ?? "Not set"),
+          const SizedBox(height: 15),
+          _buildInfoRow(Icons.location_on, "Address", _userAddress ?? "Not set"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: const Color.fromARGB(255, 151, 48, 253),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
 class ProfilePic extends StatelessWidget {
+  final String? imageUrl;
+  final bool isLoading;
+  final VoidCallback onImageTap;
+
   const ProfilePic({
     super.key,
+    this.imageUrl,
+    required this.isLoading,
+    required this.onImageTap,
   });
 
   @override
@@ -89,10 +348,16 @@ class ProfilePic extends StatelessWidget {
         fit: StackFit.expand,
         clipBehavior: Clip.none,
         children: [
-          const CircleAvatar(
-            backgroundImage:
-                NetworkImage("assets/icons/pp.jpg"),
+          CircleAvatar(
+            backgroundColor: Colors.grey[200],
+            backgroundImage: imageUrl != null
+                ? CachedNetworkImageProvider(imageUrl!) as ImageProvider
+                : const AssetImage("assets/icons/default_profile.png"),
           ),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
           Positioned(
             right: -16,
             bottom: 0,
@@ -108,8 +373,14 @@ class ProfilePic extends StatelessWidget {
                   ),
                   backgroundColor: const Color(0xFFF5F6F9),
                 ),
-                onPressed: () {},
-                child: SvgPicture.string(cameraIcon),
+                onPressed: onImageTap,
+                child: SvgPicture.asset(
+                  "assets/icons/camera.svg",
+                  colorFilter: const ColorFilter.mode(
+                    Colors.grey,
+                    BlendMode.srcIn,
+                  ),
+                ),
               ),
             ),
           )
@@ -136,10 +407,9 @@ class ProfileMenu extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: TextButton(
         style: TextButton.styleFrom(
-          foregroundColor: const Color.fromARGB(255, 183, 51, 183),
+          foregroundColor: const Color.fromARGB(255, 151, 48, 253),
           padding: const EdgeInsets.all(20),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           backgroundColor: const Color(0xFFF5F6F9),
         ),
         onPressed: press,
@@ -147,9 +417,11 @@ class ProfileMenu extends StatelessWidget {
           children: [
             SvgPicture.asset(
               icon,
-              colorFilter:
-                  const ColorFilter.mode(Color.fromARGB(255, 183, 51, 183), BlendMode.srcIn),
               width: 22,
+              colorFilter: const ColorFilter.mode(
+                Color.fromARGB(255, 151, 48, 253),
+                BlendMode.srcIn,
+              ),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -170,9 +442,3 @@ class ProfileMenu extends StatelessWidget {
     );
   }
 }
-
-const cameraIcon =
-    '''<svg width="20" height="16" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M10 12.0152C8.49151 12.0152 7.26415 10.8137 7.26415 9.33902C7.26415 7.86342 8.49151 6.6619 10 6.6619C11.5085 6.6619 12.7358 7.86342 12.7358 9.33902C12.7358 10.8137 11.5085 12.0152 10 12.0152ZM10 5.55543C7.86698 5.55543 6.13208 7.25251 6.13208 9.33902C6.13208 11.4246 7.86698 13.1217 10 13.1217C12.133 13.1217 13.8679 11.4246 13.8679 9.33902C13.8679 7.25251 12.133 5.55543 10 5.55543ZM18.8679 13.3967C18.8679 14.2226 18.1811 14.8935 17.3368 14.8935H2.66321C1.81887 14.8935 1.13208 14.2226 1.13208 13.3967V5.42346C1.13208 4.59845 1.81887 3.92664 2.66321 3.92664H4.75C5.42453 3.92664 6.03396 3.50952 6.26604 2.88753L6.81321 1.41746C6.88113 1.23198 7.06415 1.10739 7.26604 1.10739H12.734C12.9358 1.10739 13.1189 1.23198 13.1877 1.41839L13.734 2.88845C13.966 3.50952 14.5755 3.92664 15.25 3.92664H17.3368C18.1811 3.92664 18.8679 4.59845 18.8679 5.42346V13.3967ZM17.3368 2.82016H15.25C15.0491 2.82016 14.867 2.69466 14.7972 2.50917L14.2519 1.04003C14.0217 0.418041 13.4113 0 12.734 0H7.26604C6.58868 0 5.9783 0.418041 5.74906 1.0391L5.20283 2.50825C5.13302 2.69466 4.95094 2.82016 4.75 2.82016H2.66321C1.19434 2.82016 0 3.98846 0 5.42346V13.3967C0 14.8326 1.19434 16 2.66321 16H17.3368C18.8057 16 20 14.8326 20 13.3967V5.42346C20 3.98846 18.8057 2.82016 17.3368 2.82016Z" fill="#757575"/>
-</svg>
-''';

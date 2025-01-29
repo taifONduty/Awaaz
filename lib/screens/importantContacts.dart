@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ImportantContactsSheet extends StatefulWidget {
   const ImportantContactsSheet({super.key});
@@ -13,22 +14,23 @@ class _ImportantContactsSheetState extends State<ImportantContactsSheet>
   late Animation<double> _animation;
   bool _isExpanded = false;
 
+  // Predefined contacts list
   final List<Map<String, String>> _contacts = [
     {
       'name': 'Rokkha Helpline',
-      'number': '24/365',
+      'number': '991',
     },
     {
       'name': 'Dhanmondi Police Station',
-      'number': '02-000045484',
+      'number': '01320-037006',
     },
     {
       'name': 'Mohammadpur Police Station',
-      'number': '+880 1700 00000',
+      'number': '+8801720-037782',
     },
     {
       'name': 'RAB-2 Mohammadpur',
-      'number': '+880 1700 00000',
+      'number': '+8801932-255511',
     },
   ];
 
@@ -60,6 +62,22 @@ class _ImportantContactsSheetState extends State<ImportantContactsSheet>
         _controller.reverse();
       }
     });
+  }
+
+  void _makePhoneCall(String number) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: number,
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch dialer')),
+        );
+      }
+    }
   }
 
   @override
@@ -100,7 +118,7 @@ class _ImportantContactsSheetState extends State<ImportantContactsSheet>
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'IMPORTANT CONTACTS NEARBY',
+                    'IMPORTANT CONTACTS',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -112,7 +130,7 @@ class _ImportantContactsSheetState extends State<ImportantContactsSheet>
                   name: contact['name']!,
                   number: contact['number']!,
                 )),
-                const SizedBox(height: 20), // Bottom padding
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -144,9 +162,10 @@ class _ImportantContactsSheetState extends State<ImportantContactsSheet>
               color: const Color(0xFFE91E63),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Image.asset(
-              'assets/icons/rokkha_icon.png',
+            child: const Icon(
+              Icons.support_agent,
               color: Colors.white,
+              size: 24,
             ),
           ),
           title: Text(
@@ -170,9 +189,7 @@ class _ImportantContactsSheetState extends State<ImportantContactsSheet>
             ),
             child: IconButton(
               icon: const Icon(Icons.phone, color: Colors.white, size: 20),
-              onPressed: () {
-                // Implement call functionality
-              },
+              onPressed: () => _makePhoneCall(number),
             ),
           ),
         ),

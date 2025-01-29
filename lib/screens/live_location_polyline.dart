@@ -1,6 +1,8 @@
+import 'package:awaaz/apiServices/models/get_coordinates_from_placeId.dart';
 import 'package:awaaz/apiServices/models/get_places.dart';
 import 'package:awaaz/assistants/marker_icon.dart';
 import 'package:awaaz/global/map_key.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
@@ -16,6 +18,9 @@ class LiveLocationPolyline extends StatefulWidget {
 }
 
 class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
+  final GlobalKey _bottomSheetKey = GlobalKey();
+  double _bottomSheetHeight = 0.0;
+  bool isLocationEnabled = false;
   late GoogleMapController googleMapController;
   bool isSearching = false;
   PlaceFromCoordinates placeFromCoordinates = PlaceFromCoordinates();
@@ -31,11 +36,76 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
   String distance = "";
   String destinationAddress = "";
   GetPlaces getPlaces = GetPlaces();
+  bool isSelectOnMap = false;
+  Marker? temporaryDestinationMarker;
+  String _mapStyle = '';
 
   @override
   void initState() {
-    _determinePosition();
     super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _checkLocationService();
+    await _loadMapStyle();
+    await _determinePosition();
+  }
+
+  Future<void> _loadMapStyle() async {
+    try{
+    String style = await DefaultAssetBundle.of(context).loadString('assets/map-styles/minimalist_map.json');
+    setState(() {
+      _mapStyle = style;
+    });
+    }catch(e){
+      print("Error loading map style: $e");
+    }
+  }
+
+  Future<void> _checkLocationService() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        _showLocationDialog();
+      }
+      return;
+    }
+    setState(() {
+      isLocationEnabled = true;
+    });
+  }
+
+  void _showLocationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Location Service Disabled'),
+          content: const Text('Please enable location services to use this feature.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Open Settings'),
+              onPressed: () async {
+                await Geolocator.openLocationSettings();
+                if (mounted) {
+                  Navigator.pop(context);
+                  _checkLocationService();
+                }
+              },
+            ),
+            TextButton(
+              child: const Text('Go Back'),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -43,30 +113,37 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     return Scaffold(
       body: Stack(
         children: [
-          if (initialPosition == null)
-            const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
-              ),
-            )
-          else
             Stack(
               children: [
-                GoogleMap(
-                  initialCameraPosition: initialPosition!,
-                  tiltGesturesEnabled: true,
-                  compassEnabled: true,
-                  scrollGesturesEnabled: true,
-                  zoomControlsEnabled: false,
-                  zoomGesturesEnabled: true,
-                  myLocationButtonEnabled: false,
-                  onMapCreated: (GoogleMapController controller) {
-                    googleMapController = controller;
-                  },
-                  markers: markers,
-                  polylines: polyline,
-                ),
-                // Custom AppBar
+                if (initialPosition != null)
+                  GoogleMap(
+                    // style: _mapStyle,
+                    initialCameraPosition: initialPosition!,
+                    tiltGesturesEnabled: true,
+                    compassEnabled: true,
+                    scrollGesturesEnabled: true,
+                    zoomControlsEnabled: false,
+                    zoomGesturesEnabled: true,
+                    myLocationButtonEnabled: false,
+                    onMapCreated: (GoogleMapController controller) {
+                      googleMapController = controller;
+                      // controller.setMapStyle(_mapStyle);
+                    },
+                    markers: {
+                      ...markers,
+                      if(temporaryDestinationMarker!=null) temporaryDestinationMarker!,
+                    },
+                    polylines: polyline,
+                    onTap: isSelectOnMap? (LatLng tappedPoint){_setDestinationFromMap(tappedPoint);} : null,
+                  ),
+
+                if (!isLocationEnabled || initialPosition == null)
+                  const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+                    ),
+                  ),
+                // Custom AppBar - Always visible
                 SafeArea(
                   child: Container(
                     margin: const EdgeInsets.all(16),
@@ -120,21 +197,58 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
                   ),
               ],
             ),
-          // Bottom Sheet
+          // Bottom Sheet with proper spacing
           if (distance.isNotEmpty)
-            _buildBottomSheet(),
+            Positioned(
+              bottom: 10, // Added spacing from bottom
+              left: 0,
+              right: 0,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildBottomSheet(),
+                  // const SizedBox(height: 70), // Added spacing for FAB
+                ],
+              ),
+            ),
+          // Measure the bottom sheet's height
+          if (distance.isNotEmpty)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_bottomSheetKey.currentContext != null) {
+                    final RenderBox renderBox = _bottomSheetKey.currentContext!.findRenderObject() as RenderBox;
+                    final size = renderBox.size;
+                    if (size.height != _bottomSheetHeight) {
+                      setState(() {
+                        _bottomSheetHeight = size.height;
+                      });
+                    }
+                  }
+                });
+                return const SizedBox.shrink(); // Placeholder widget
+              },
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            bottom: distance.isNotEmpty
+                ? _bottomSheetHeight + 10 // 10 is the bottom spacing
+                : 20, // Adjust as needed
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                if (originLatLng != null) {
+                  googleMapController.animateCamera(
+                    CameraUpdate.newLatLngZoom(originLatLng!, 16),
+                  );
+                }
+              },
+              backgroundColor: Colors.purple,
+              child: const Icon(Icons.my_location, color: Colors.white),
+            ),
+          ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (originLatLng != null) {
-            googleMapController.animateCamera(
-              CameraUpdate.newLatLngZoom(originLatLng!, 16),
-            );
-          }
-        },
-        backgroundColor: Colors.purple,
-        child: const Icon(Icons.my_location, color: Colors.white),
       ),
     );
   }
@@ -178,7 +292,7 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
 
   Widget _buildAppBarContent() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       child: Row(
         children: [
           IconButton(
@@ -187,10 +301,10 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
           ),
           const Expanded(
             child: Text(
-              "Track Location",
+              "Search Destination",
               style: TextStyle(
                 color: Colors.purple,
-                fontSize: 20,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
@@ -199,6 +313,17 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
           IconButton(
             icon: const Icon(Icons.search, color: Colors.purple),
             onPressed: () => setState(() => isSearching = true),
+          ),
+          IconButton(icon: Icon(isSelectOnMap? Icons.map_outlined :Icons.map,color: Colors.purple,),
+            onPressed: (){
+              setState(() {
+                isSelectOnMap = !isSelectOnMap;
+                if(!isSelectOnMap){
+                  temporaryDestinationMarker = null;
+                }
+              });
+          },
+            tooltip: isSelectOnMap ? 'Disable Select on Map' : 'Select Destination on Map',
           ),
         ],
       ),
@@ -230,6 +355,7 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
       left: 0,
       right: 0,
       child: Container(
+        key: _bottomSheetKey,
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -285,6 +411,23 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     );
   }
 
+  void _setDestinationFromMap(LatLng tappedPoint) {
+    setState(() {
+      destinationLatLng = tappedPoint;
+      distance = "";
+      destinationAddress = "";
+      polyline.clear();
+      temporaryDestinationMarker = Marker(
+        markerId: const MarkerId('tempDestination'),
+        position: destinationLatLng!,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+      );
+      isSelectOnMap = false; // Exit "Select on Map" mode
+    });
+
+    _getPolyline();
+  }
+
   void _handleLocationSelection(int index) {
     ApiServices()
         .getCoordinatesFromPlaceId(getPlaces.predictions?[index].placeId ?? "")
@@ -298,6 +441,7 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
         );
         getPlaces.predictions = null;
         isSearching = false;
+        temporaryDestinationMarker = null;
 
         markers.add(
           Marker(
@@ -326,9 +470,9 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     polylineCoordinates.clear();
 
     if (result.points.isNotEmpty) {
-      for (var point in result.points) {
+      result.points.forEach((PointLatLng point) {
         polylineCoordinates.add(LatLng(point.latitude, point.longitude));
-      }
+      });
 
       // Calculate total distance
       double totalDistance = 0.0;
@@ -359,7 +503,7 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
     polyline.add(
       Polyline(
         polylineId: const PolylineId('polyline'),
-        color: Colors.blue,
+        color: Colors.purpleAccent,
         width: 6,
         points: polylineCoordinates,
       ),
@@ -401,11 +545,15 @@ class _LiveLocationPolylineState extends State<LiveLocationPolyline> {
       distanceFilter: 4,
     );
 
-    await getBytesFromAsset("images/img.png" ,40).then((value){
-      setState(() {
-        liveLocationMarker = value;
-      });
-    });
+    try {
+      liveLocationMarker = await BitmapDescriptor.asset(
+        const ImageConfiguration(size: Size(48, 48)),
+        'assets/icons/default_profile.png',
+      );
+    } catch (e) {
+      print("Error loading custom marker: $e");
+      liveLocationMarker = BitmapDescriptor.defaultMarker;
+    }
 
     _geolocatorPlatform.getPositionStream(locationSettings: locationSettings).listen(
           (Position? position) {

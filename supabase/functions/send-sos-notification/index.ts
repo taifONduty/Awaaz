@@ -1,5 +1,3 @@
-// supabase/functions/send-sos-notification/index.ts
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SignJWT } from "https://deno.land/x/jose@v4.9.1/jwt/sign.ts";
 import { importPKCS8 } from "https://deno.land/x/jose@v4.9.1/key/import.ts";
@@ -11,9 +9,8 @@ if (!serviceAccountEnv) {
 }
 
 let serviceAccount;
-
 try {
-  serviceAccount = JSON.parse(serviceAccountEnv); // Here
+  serviceAccount = JSON.parse(serviceAccountEnv);
 } catch (error) {
   console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT:", error);
   throw new Error("Invalid GOOGLE_SERVICE_ACCOUNT format.");
@@ -22,21 +19,20 @@ try {
 async function getAccessToken(): Promise<string> {
   try {
     console.log("Getting access token...");
-
-    // Import the private key
     const privateKey = await importPKCS8(serviceAccount.private_key, 'RS256');
+    const now = Math.floor(Date.now() / 1000);
 
-    // Create JWT token
     const jwt = await new SignJWT({
       iss: serviceAccount.client_email,
       scope: "https://www.googleapis.com/auth/firebase.messaging",
       aud: "https://oauth2.googleapis.com/token",
     })
-      .setProtectedHeader({ alg: 'RS256' })
-      .setExpirationTime('1h')
+      .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+      .setIssuedAt(now)
+      .setExpirationTime(now + 3600)
+      .setNotBefore(now)
       .sign(privateKey);
 
-    // Exchange JWT for access token
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
@@ -67,64 +63,67 @@ async function sendFCMMessage(token: string, accessToken: string, data: any) {
     console.log("Sending FCM message...");
     const fcmEndpoint = `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`;
 
+    const message = {
+      message: {
+        token: token,
+        notification: {
+          title: "SOS Alert!",
+          body: `${data.childName} has triggered an SOS alert!`
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "high_importance_channel",
+            sound: "default",
+            defaultSound: true,
+            defaultVibrateTimings: true,
+            notificationPriority: "PRIORITY_MAX"
+          }
+        },
+        apns: {
+          payload: {
+            aps: {
+              alert: {
+                title: "SOS Alert!",
+                body: `${data.childName} has triggered an SOS alert!`
+              },
+              sound: "default",
+              badge: 1,
+              'content-available': 1,
+              priority: 10,
+              'mutable-content': 1
+            }
+          },
+          headers: {
+            'apns-priority': '10',
+            'apns-push-type': 'alert'
+          }
+        },
+        data: {
+          type: "sos_alert",
+          childId: data.childId,
+          latitude: data.latitude.toString(),
+          longitude: data.longitude.toString(),
+          click_action: "FLUTTER_NOTIFICATION_CLICK"
+        },
+        webpush: {
+          headers: {
+            Urgency: "high",
+            TTL: "86400"
+          }
+        }
+      }
+    };
+
+    console.log("FCM Message payload:", JSON.stringify(message, null, 2));
+
     const fcmResponse = await fetch(fcmEndpoint, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: {
-          token: token,
-          notification: {
-            title: "SOS Alert!",
-            body: `${data.childName} has triggered an SOS alert!`
-          },
-          android: {
-            notification: {
-              channelId: "high_importance_channel",
-              priority: "high",
-              sound: "default",
-              defaultSound: true,
-              defaultVibrateTimings: true,
-              notification_priority: "PRIORITY_MAX"
-            },
-            priority: "high"
-          },
-          apns: {
-            headers: {
-              "apns-priority": "10",
-              "apns-push-type": "alert"
-            },
-            payload: {
-              aps: {
-                alert: {
-                  title: "SOS Alert!",
-                  body: `${data.childName} has triggered an SOS alert!`
-                },
-                sound: "default",
-                badge: 1,
-                "content-available": 1,
-                priority: 10,
-                "mutable-content": 1
-              }
-            }
-          },
-          data: {
-            type: "sos_alert",
-            childId: data.childId,
-            latitude: data.latitude.toString(),
-            longitude: data.longitude.toString(),
-            click_action: "FLUTTER_NOTIFICATION_CLICK"
-          },
-          webpush: {
-            headers: {
-              Urgency: "high",
-              TTL: "86400"
-            }
-          }
-        }
-      })
+      body: JSON.stringify(message)
     });
 
     if (!fcmResponse.ok) {
@@ -145,7 +144,6 @@ serve(async (req) => {
   try {
     console.log("Processing SOS notification request...");
 
-    // Parse request
     const body = await req.json();
     console.log("Request data:", {
       childId: body.childId,
@@ -154,12 +152,10 @@ serve(async (req) => {
       location: { lat: body.latitude, lng: body.longitude }
     });
 
-    // Validate incoming data
     if (!body.childId || !body.parentId || !body.latitude || !body.longitude) {
       throw new Error("Missing required fields in the request body.");
     }
 
-    // Get parent's FCM token
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -185,7 +181,6 @@ serve(async (req) => {
 
     console.log("Parent FCM token found");
 
-    // Get access token and send notification
     const accessToken = await getAccessToken();
     const fcmResult = await sendFCMMessage(parentData[0].fcm_token, accessToken, body);
 
