@@ -1,5 +1,8 @@
 import 'package:awaaz/screens/chatListScreen.dart';
 import 'package:awaaz/screens/live_location_polyline.dart';
+import 'package:awaaz/sidebar/news.dart';
+import 'package:awaaz/sidebar/safetytips.dart';
+import 'package:awaaz/sidebar/selfdefense.dart';
 import 'package:flutter/material.dart';
 import '../screens/connection_requests_screen.dart';
 import 'locations.dart';
@@ -23,7 +26,7 @@ class Sidebar extends StatelessWidget {
                 color: Colors.purple, // Header background color
               ),
               child: Positioned(
-                top: 100,
+                top: 70,
                 child: Text(
                   'Menu',
                   style: TextStyle(
@@ -36,23 +39,12 @@ class Sidebar extends StatelessWidget {
             ),
             _buildSidebarTile(
               context,
-              icon: Icons.location_on,
-              title: 'Locations',
+              icon: Icons.self_improvement,
+              title: 'Self defense',
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const LiveLocationPolyline()),
-                );
-              },
-            ),
-            _buildSidebarTile(
-              context,
-              icon: Icons.movie,
-              title: 'Storyboard',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const StoryboardPage()),
+                  MaterialPageRoute(builder: (context) => SelfDefensePage()),
                 );
               },
             ),
@@ -75,6 +67,28 @@ class Sidebar extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const TutorialPage()),
+                );
+              },
+            ),
+            _buildSidebarTile(
+              context,
+              icon: Icons.newspaper,
+              title: 'News',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const NewsPage()),
+                );
+              },
+            ),
+            _buildSidebarTile(
+              context,
+              icon: Icons.tips_and_updates,
+              title: 'Safety tips',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SafetyTipsPage()),
                 );
               },
             ),

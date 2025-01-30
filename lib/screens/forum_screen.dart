@@ -136,7 +136,7 @@ class _ForumScreenState extends State<ForumScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreatePost(),
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.purpleAccent,
         child: const Icon(Icons.add),
       ),
     );

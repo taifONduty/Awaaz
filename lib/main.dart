@@ -40,17 +40,17 @@ void main() async {
   );
 
 
-  if (Platform.isIOS) {
-    await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      announcement: true,
-      badge: true,
-      carPlay: false,
-      criticalAlert: true, // Request critical alert permission
-      provisional: false,
-      sound: true,
-    );
-  }
+  // if (Platform.isIOS) {
+  //   await FirebaseMessaging.instance.requestPermission(
+  //     alert: true,
+  //     announcement: true,
+  //     badge: true,
+  //     carPlay: false,
+  //     criticalAlert: true, // Request critical alert permission
+  //     provisional: false,
+  //     sound: true,
+  //   );
+  // }
 
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -104,42 +104,42 @@ void main() async {
 
   );
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
-
-    // If message contains notification and is on Android
-    if (notification != null && android != null) {
-      flutterLocalNotificationsPlugin.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'emergency_sos_channel',
-            'Emergency SOS Alerts',
-            channelDescription: 'Critical emergency alerts from child devices',
-            importance: Importance.max,
-            priority: Priority.max,
-            fullScreenIntent: true,
-            sound: const RawResourceAndroidNotificationSound('emergency_siren'),
-            enableLights: true,
-            ledColor: const Color(0xFFFF0000),
-            ledOnMs: 1000,
-            ledOffMs: 500,
-            vibrationPattern: Int64List.fromList([0, 1000, 1000, 1000, 1000, 1000]),
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-            sound: 'emergency_siren.wav',
-            interruptionLevel: InterruptionLevel.critical,
-          ),
-        ),
-      );
-    }
-  });
+  // FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  //   RemoteNotification? notification = message.notification;
+  //   AndroidNotification? android = message.notification?.android;
+  //
+  //   // If message contains notification and is on Android
+  //   if (notification != null && android != null) {
+  //     flutterLocalNotificationsPlugin.show(
+  //       notification.hashCode,
+  //       notification.title,
+  //       notification.body,
+  //       NotificationDetails(
+  //         android: AndroidNotificationDetails(
+  //           'emergency_sos_channel',
+  //           'Emergency SOS Alerts',
+  //           channelDescription: 'Critical emergency alerts from child devices',
+  //           importance: Importance.max,
+  //           priority: Priority.max,
+  //           fullScreenIntent: true,
+  //           sound: const RawResourceAndroidNotificationSound('emergency_siren'),
+  //           enableLights: true,
+  //           ledColor: const Color(0xFFFF0000),
+  //           ledOnMs: 1000,
+  //           ledOffMs: 500,
+  //           vibrationPattern: Int64List.fromList([0, 1000, 1000, 1000, 1000, 1000]),
+  //         ),
+  //         iOS: const DarwinNotificationDetails(
+  //           presentAlert: true,
+  //           presentBadge: true,
+  //           presentSound: true,
+  //           sound: 'emergency_siren.wav',
+  //           interruptionLevel: InterruptionLevel.critical,
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // });
 
   await FCMHelper.initialize();
   await FirebaseFirestore.instance.settings.persistenceEnabled;
