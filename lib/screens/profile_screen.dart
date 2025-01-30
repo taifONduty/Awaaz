@@ -10,6 +10,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../authentication/login.dart';
 import '../models/user_model.dart';
 import 'contacts.dart';
+import 'notifications_page.dart';
+import 'settings_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -255,12 +257,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ProfileMenu(
               text: "Notifications",
               icon: "assets/icons/notifications.svg",
-              press: () {},
+              press: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (c) => const NotificationsPage()),
+                );
+              },
             ),
             ProfileMenu(
               text: "Settings",
               icon: "assets/icons/settings.svg",
-              press: () {},
+              press: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (c) => const SettingsPage()),
+                );
+              },
             ),
             ProfileMenu(
               text: "Log Out",
