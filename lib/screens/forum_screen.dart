@@ -18,6 +18,24 @@ class _ForumScreenState extends State<ForumScreen> {
   String _currentTab = 'All';
   final List<String> _tabs = ['All', 'Discussion', 'Emergency', 'News'];
 
+
+  Stream<QuerySnapshot> _getPostsStream() {
+    final postsRef = FirebaseFirestore.instance.collection('posts');
+
+    if (_currentTab == 'All') {
+      // Just order by timestamp for "All" tab
+      return postsRef
+          .orderBy('createdAt', descending: true)
+          .snapshots();
+    } else {
+      // For specific categories, just filter by tag
+      return postsRef
+          .where('tags', arrayContains: _currentTab)
+          .snapshots();
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,10 +49,10 @@ class _ForumScreenState extends State<ForumScreen> {
         title: Row(
           children: [
             const Text(
-              'SafetyCommunity',
-              style: TextStyle(color: Colors.white),
+              'Awaaz Forum',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 20),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
@@ -64,10 +82,10 @@ class _ForumScreenState extends State<ForumScreen> {
         ),
         actions: [
 
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () {},
-          ),
+          // IconButton(
+          //   icon: const Icon(Icons.more_vert, color: Colors.white),
+          //   onPressed: () {},
+          // ),
         ],
       ),
       body: Column(
@@ -75,30 +93,39 @@ class _ForumScreenState extends State<ForumScreen> {
           _buildTabBar(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _currentTab == 'All'
-                  ? FirebaseFirestore.instance
-                  .collection('posts')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots()
-                  : FirebaseFirestore.instance
-                  .collection('posts')
-                  .where('tags', arrayContains: _currentTab)
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+              stream: _getPostsStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return const Center(child: Text('Something went wrong'));
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.purple,
+                    ),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No ${_currentTab.toLowerCase()} posts yet',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
                 }
 
                 return ListView.builder(
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
-                    final post = snapshot.data!.docs[index];
-                    return _buildPostCard(post);
+                    final doc = snapshot.data!.docs[index];
+                    return _buildPostCard(doc);
                   },
                 );
               },
@@ -106,34 +133,34 @@ class _ForumScreenState extends State<ForumScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.black,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Communities',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Create',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Inbox',
-          ),
-        ],
-      ),
+      // bottomNavigationBar: BottomNavigationBar(
+      //   backgroundColor: Colors.black,
+      //   selectedItemColor: Colors.white,
+      //   unselectedItemColor: Colors.grey,
+      //   type: BottomNavigationBarType.fixed,
+      //   items: const [
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.home),
+      //       label: 'Home',
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.people),
+      //       label: 'Communities',
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.add),
+      //       label: 'Create',
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.chat),
+      //       label: 'Chat',
+      //     ),
+      //     BottomNavigationBarItem(
+      //       icon: Icon(Icons.notifications),
+      //       label: 'Inbox',
+      //     ),
+      //   ],
+      // ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreatePost(),
         backgroundColor: Colors.purpleAccent,
@@ -264,7 +291,7 @@ class _ForumScreenState extends State<ForumScreen> {
                     style: TextStyle(color: Colors.grey[400]),
                   ),
                   const Spacer(),
-                  Icon(Icons.share, color: Colors.grey[400], size: 20),
+                  // Icon(Icons.share, color: Colors.grey[400], size: 20),
                 ],
               ),
             ],

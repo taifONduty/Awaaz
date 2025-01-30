@@ -130,7 +130,7 @@ class _LiveLocationScreenState extends State<LiveLocationScreen> {
           ? const Center(child: CircularProgressIndicator())
           : GoogleMap(
         initialCameraPosition: CameraPosition(
-          target: widget.initialLocation ?? const LatLng(0, 0),
+          target: widget.initialLocation ?? const LatLng(23.8041, 90.4152),
           zoom: 15,
         ),
         markers: _markers.values.toSet(),

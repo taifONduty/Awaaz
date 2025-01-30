@@ -30,6 +30,7 @@ class Post {
     required this.createdAt,
     this.location,
     this.locationName,
+
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {

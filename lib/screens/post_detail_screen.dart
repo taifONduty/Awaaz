@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/post.dart';
 import '../services/forum_service.dart';
+import '../widgets/IncidentLocations.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -47,6 +48,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 children: [
                   _buildPostHeader(),
                   _buildPostContent(),
+                  _buildLocationSection(),
                   _buildCommentsList(),
                 ],
               ),
@@ -146,10 +148,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               const SizedBox(width: 8),
               _buildVoteButton(false),
               const Spacer(),
-              IconButton(
-                icon: Icon(Icons.share, color: secondaryTextColor),
-                onPressed: _sharePost,
-              ),
+              // IconButton(
+              //   icon: Icon(Icons.share, color: secondaryTextColor),
+              //   onPressed: _sharePost,
+              // ),
               IconButton(
                 icon: Icon(Icons.bookmark_border, color: secondaryTextColor),
                 onPressed: _savePost,
@@ -166,6 +168,51 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       icon: Icon(isUpvote ? Icons.arrow_upward : Icons.arrow_downward),
       onPressed: () => _handleVote(isUpvote ? 1 : -1),
       color: secondaryTextColor,
+    );
+  }
+
+  Widget _buildLocationSection() {
+    if (widget.post.location == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      color: surfaceColor,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Icon(Icons.location_on, color: primaryColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Incident Location',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (widget.post.locationName != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                widget.post.locationName!,
+                style: TextStyle(color: secondaryTextColor),
+              ),
+            ),
+          IncidentLocationMap(
+            location: widget.post.location!,
+            title: widget.post.locationName ?? 'Incident Location',
+          ),
+        ],
+      ),
     );
   }
 

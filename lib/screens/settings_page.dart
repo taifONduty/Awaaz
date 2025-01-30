@@ -56,4 +56,8 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes

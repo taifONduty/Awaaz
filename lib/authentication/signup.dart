@@ -28,7 +28,7 @@ class SignUpScreen extends StatelessWidget {
         decoration: const BoxDecoration(
           image: DecorationImage(
             fit: BoxFit.cover,
-            image: AssetImage('assets/logo/img.png'),
+            image: AssetImage('assets/logo/background.png'),
           ),
         ),
         child: Stack(
@@ -179,6 +179,7 @@ class SignUpScreen extends StatelessWidget {
                               color: const Color(0xFF4B0082)
                                   .withOpacity(0.8),
                               fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),

@@ -249,9 +249,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: "assets/icons/id.svg",
               press: () {
                 Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const ContactsPage()),
-                        );
+                  context,
+                  MaterialPageRoute(builder: (context) => const ContactsPage()),
+                );
               },
             ),
             ProfileMenu(

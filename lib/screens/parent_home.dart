@@ -1,5 +1,6 @@
 // lib/screens/parent_home.dart
 
+import 'package:awaaz/screens/parent/alert_screen.dart';
 import 'package:awaaz/screens/parent/live_location_screen.dart';
 import 'package:awaaz/screens/parent/my_children_screen.dart';
 import 'package:awaaz/services/notification_service.dart';
@@ -114,13 +115,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.person_add, color: Color(0xFF4B0082)),
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AddChildScreen()),
-                        ),
-                      ),
+                      // IconButton(
+                      //   icon: const Icon(Icons.person_add, color: Color(0xFF4B0082)),
+                      //   onPressed: () => Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute(builder: (context) => const AddChildScreen()),
+                      //   ),
+                      // ),
                       IconButton(
                         icon: const Icon(Icons.logout, color: Color(0xFF4B0082)),
                         onPressed: () => _signOut(context),
@@ -165,7 +166,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       title: 'Alerts',
                       color: Colors.orange[100]!,
                       iconColor: Colors.orange,
-                      onTap: () {},
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AlertsScreen()),
+                        ),
                     ),
                     _buildFeatureCard(
                       icon: Icons.chat,

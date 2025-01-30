@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+import '../add_child_screen.dart';
+
 class MyChildrenScreen extends StatefulWidget {
   const MyChildrenScreen({super.key});
 
@@ -140,6 +142,18 @@ class _MyChildrenScreenState extends State<MyChildrenScreen> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF4B0082)),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: IconButton(
+              icon: const Icon(Icons.person_add, color: Color(0xFF4B0082)),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddChildScreen()),
+              ),
+            ),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

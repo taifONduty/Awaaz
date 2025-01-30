@@ -8,6 +8,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../apiServices/api_services.dart';
+import '../apiServices/models/place_from_coordinates.dart';
 import '../assistants/IncomingCallPage.dart';
 import '../sidebar/sidebar.dart';
 import 'chatListScreen.dart';
@@ -75,6 +77,13 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
         _sendSosAlert(); // Send SOS alert to parent
       }
     });
+  }
+
+  Future<void> _checkLocationPermission() async {
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      await Geolocator.requestPermission();
+    }
   }
 
   Future<void> _sendSosAlert() async {
@@ -360,6 +369,7 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _checkLocationPermission();
     _initializePowerButtonSOS();
     _loadProfileImage();
   }
@@ -507,60 +517,186 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const SizedBox(height: 10),
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.location_on, color: Colors.black),
-                            Text(
-                              'Dhanmondi, Dhaka',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.black,
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          margin: const EdgeInsets.only(bottom: 10),
+                          width: 200,
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(20),),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              StreamBuilder<Position>(
+                                stream: Geolocator.getPositionStream(
+                                  locationSettings: const LocationSettings(
+                                    accuracy: LocationAccuracy.high,
+                                    distanceFilter: 10,
+                                  ),
+                                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.location_off, color: Colors.grey, size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Getting location...',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                          
+                                  if (snapshot.hasError || !snapshot.hasData) {
+                                    return const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.location_off, color: Colors.red, size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Offline',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                          
+                                  return FutureBuilder<PlaceFromCoordinates>(
+                                    future: ApiServices().placeFromCoordinates(
+                                      snapshot.data!.latitude,
+                                      snapshot.data!.longitude,
+                                    ),
+                                    builder: (context, locationSnapshot) {
+                                      if (locationSnapshot.hasError) {
+                                        print('Location Error: ${locationSnapshot.error}');
+                                        return const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.error_outline, color: Colors.red, size: 20),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Location error',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                          
+                                      if (!locationSnapshot.hasData) {
+                                        return const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.location_searching, color: Colors.black, size: 20),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Locating...',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                          
+                                      // Extract city/area name from address components
+                                      final address = locationSnapshot.data?.results?.first;
+                                      String locationName = 'Unknown location';
+                          
+                                      if (address?.addressComponents != null) {
+                                        // Try to find sublocality or locality
+                                        for (var component in address!.addressComponents!) {
+                                          if (component.types!.contains('sublocality') ||
+                                              component.types!.contains('locality')) {
+                                            locationName = component.longName ?? locationName;
+                                            break;
+                                          }
+                                        }
+                                      }
+                          
+                                      return Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.location_on, color: Colors.black, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            locationName,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 30),
                         ElevatedButton(
                           onPressed: _handleSosTap,
                           style: ElevatedButton.styleFrom(
                             shape: const CircleBorder(),
-                            padding: const EdgeInsets.all(50),
+                            padding: const EdgeInsets.all(60),  // Increased padding
                             backgroundColor: Colors.white,
+                            elevation: 8,  // Added elevation
                             side: BorderSide(
                               color: _getBorderColor(),
                               width: 4,
                             ),
-                            shadowColor: _getBorderColor().withOpacity(0.5),
-                            elevation: 10,
+                            shadowColor: _getBorderColor().withOpacity(0.4),
                           ),
                           child: const Text(
                             'SOS',
                             style: TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              color: Color.fromARGB(255, 0, 14, 1),
+                              fontSize: 48,  // Increased size
+                              fontWeight: FontWeight.w900,  // Bolder
+                              color: Colors.black87,
                             ),
                           ),
                         ),
                         const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: _resetSos,
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 15),
+                          child: ElevatedButton(
+                            onPressed: _resetSos,
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 50,  // Wider
+                                vertical: 15,
+                              ),
+                              backgroundColor: Colors.purple,
+                              elevation: 4,
+                              shadowColor: Colors.purple.withOpacity(0.4),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 40, vertical: 15),
-                            backgroundColor:
-                            const Color.fromARGB(255, 183, 51, 183),
-                          ),
-                          child: const Text(
-                            'RESET',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                            child: const Text(
+                              'RESET',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,  // Added letter spacing
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),

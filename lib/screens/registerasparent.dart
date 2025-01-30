@@ -118,7 +118,7 @@ class _RegisterAsParentState extends State<RegisterAsParent> {
         decoration: const BoxDecoration(
           image: DecorationImage(
             fit: BoxFit.cover,
-            image: AssetImage('assets/logo/img.png'),
+            image: AssetImage('assets/logo/background.png'),
           ),
         ),
         child: SafeArea(

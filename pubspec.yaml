@@ -102,6 +102,7 @@ flutter:
   assets:
     - assets/
     - assets/icons/
+    - assets/team/
     - assets/icons/account.svg
     - assets/icons/id.svg
     - assets/icons/notifications.svg
