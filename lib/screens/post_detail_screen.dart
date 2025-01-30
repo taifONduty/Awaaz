@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
@@ -19,12 +18,25 @@ class PostDetailScreen extends StatefulWidget {
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
 
+  // Define theme colors
+  final backgroundColor = const Color(0xFF121212);
+  final surfaceColor = const Color(0xFF1E1E1E);
+  final primaryColor = Colors.purple[300];
+  final textColor = Colors.white;
+  final secondaryTextColor = Colors.grey[400];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Post Detail'),
-        backgroundColor: Colors.purple,
+        title: Text(
+          'Post Detail',
+          style: TextStyle(color: textColor),
+        ),
+        backgroundColor: surfaceColor,
+        elevation: 0,
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: Column(
         children: [
@@ -49,7 +61,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget _buildPostHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: surfaceColor,
+      margin: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -65,7 +78,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 children: [
                   Text(
                     widget.post.authorName,
-                    style: const TextStyle(
+                    style: TextStyle(
+                      color: textColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -73,7 +87,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   Text(
                     _formatTimeAgo(widget.post.createdAt),
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: secondaryTextColor,
                       fontSize: 12,
                     ),
                   ),
@@ -84,7 +98,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           const SizedBox(height: 12),
           Text(
             widget.post.title,
-            style: const TextStyle(
+            style: TextStyle(
+              color: textColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -97,18 +112,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Widget _buildPostContent() {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: surfaceColor,
+      margin: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.post.content),
+          Text(
+            widget.post.content,
+            style: TextStyle(color: textColor),
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
             children: widget.post.tags.map((tag) => Chip(
               label: Text(tag),
-              backgroundColor: Colors.purple[50],
-              labelStyle: const TextStyle(color: Colors.purple),
+              backgroundColor: primaryColor?.withOpacity(0.2),
+              labelStyle: TextStyle(color: primaryColor),
             )).toList(),
           ),
           const SizedBox(height: 16),
@@ -118,7 +137,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               const SizedBox(width: 8),
               Text(
                 widget.post.votes.toString(),
-                style: const TextStyle(
+                style: TextStyle(
+                  color: textColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -127,11 +147,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               _buildVoteButton(false),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.share),
+                icon: Icon(Icons.share, color: secondaryTextColor),
                 onPressed: _sharePost,
               ),
               IconButton(
-                icon: const Icon(Icons.bookmark_border),
+                icon: Icon(Icons.bookmark_border, color: secondaryTextColor),
                 onPressed: _savePost,
               ),
             ],
@@ -145,7 +165,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return IconButton(
       icon: Icon(isUpvote ? Icons.arrow_upward : Icons.arrow_downward),
       onPressed: () => _handleVote(isUpvote ? 1 : -1),
-      color: Colors.grey[600],
+      color: secondaryTextColor,
     );
   }
 
@@ -159,15 +179,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: textColor)));
         }
 
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: primaryColor));
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No comments yet'));
+          return Center(child: Text('No comments yet', style: TextStyle(color: secondaryTextColor)));
         }
 
         return ListView.builder(
@@ -181,7 +201,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             return Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 1),
-              color: Colors.white,
+              color: surfaceColor,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,17 +216,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       const SizedBox(width: 8),
                       Text(
                         commentData['authorName'] ?? 'Anonymous',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         _formatTimeAgo(commentData['createdAt']),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(color: secondaryTextColor, fontSize: 12),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(commentData['content'] ?? ''),
+                  Text(
+                    commentData['content'] ?? '',
+                    style: TextStyle(color: textColor),
+                  ),
                 ],
               ),
             );
@@ -216,68 +239,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildCommentTile(QueryDocumentSnapshot comment) {
-    final data = comment.data() as Map<String, dynamic>;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 1),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(data['authorAvatar']),
-                radius: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                data['authorName'],
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _formatTimeAgo(DateTime.parse(data['createdAt'])),
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(data['content']),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_upward, size: 16),
-                onPressed: () => _handleCommentVote(comment.id, 1),
-                color: Colors.grey[600],
-              ),
-              Text(data['votes'].toString()),
-              IconButton(
-                icon: const Icon(Icons.arrow_downward, size: 16),
-                onPressed: () => _handleCommentVote(comment.id, -1),
-                color: Colors.grey[600],
-              ),
-              TextButton(
-                onPressed: () => _replyToComment(comment.id),
-                child: const Text('Reply'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildCommentInput() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.2),
             blurRadius: 4,
             offset: const Offset(0, -2),
           ),
@@ -288,10 +257,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           Expanded(
             child: TextField(
               controller: _commentController,
-              decoration: const InputDecoration(
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
                 hintText: 'Write a comment...',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                hintStyle: TextStyle(color: secondaryTextColor),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: secondaryTextColor!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: secondaryTextColor!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: primaryColor!),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
               maxLines: null,
               keyboardType: TextInputType.multiline,
@@ -302,12 +281,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           IconButton(
             icon: const Icon(Icons.send),
             onPressed: _submitComment,
-            color: Colors.purple,
+            color: primaryColor,
           ),
         ],
       ),
     );
   }
+
 
   Future<void> _handleVote(int value) async {
     try {
