@@ -15,8 +15,6 @@ import 'assistants/fcmHelper.dart';
 import 'authentication/firebase_options.dart';
 import 'authentication/login.dart';
 import 'homeRouter.dart';
-import "package:awaaz/sidebar/tutorial.dart";
-
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();

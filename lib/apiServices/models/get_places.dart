@@ -7,18 +7,18 @@ class GetPlaces{
     if(json['predictions']!=null){
       predictions = <Predictions>[];
       json['predictions'].forEach((v){
-        predictions!.add(Predictions.fromJson(v));
+        predictions!.add(new Predictions.fromJson(v));
       });
     }
     status = json['status'];
   }
 
   Map<String, dynamic>toJson(){
-    final Map<String, dynamic> data = <String, dynamic>{};
-    if(predictions!= null){
-      data['predictions'] = predictions!.map((v)=>v.toJson()).toList();
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    if(this.predictions!= null){
+      data['predictions'] = this.predictions!.map((v)=>v.toJson()).toList();
     }
-    data['status'] = status;
+    data['status'] = this.status;
     return data;
   }
 }
@@ -48,37 +48,37 @@ class Predictions{
     if(json['matched_substrings']!=null){
       matchedSubstrings = <MatchedSubstrings>[];
       json['matched_substrings'].forEach((v){
-        matchedSubstrings!.add(MatchedSubstrings.fromJson(v));
+        matchedSubstrings!.add(new MatchedSubstrings.fromJson(v));
       });
     }
     placeId =json['place_id'];
     reference = json['reference'];
-    structuredFormatting = json['structured_formatting']!=null? StructuredFormatting.fromJson(json['structured_formatting']):null;
+    structuredFormatting = json['structured_formatting']!=null? new StructuredFormatting.fromJson(json['structured_formatting']):null;
     if(json['terms']!=null) {
       terms = <Terms>[];
       json['terms'].forEach((v) {
-        terms!.add(Terms.fromJson(v));
+        terms!.add(new Terms.fromJson(v));
       });
     }
     types = json['types'].cast<String>();
   }
 
   Map<String,dynamic> toJson(){
-    final Map<String, dynamic> data = <String,dynamic>{};
-    data['description'] = description;
-    if(matchedSubstrings!=null) {
+    final Map<String, dynamic> data = new Map<String,dynamic>();
+    data['description'] = this.description;
+    if(this.matchedSubstrings!=null) {
       data['matched_substrings'] =
-          matchedSubstrings!.map((v) => v.toJson()).toList();
+          this.matchedSubstrings!.map((v) => v.toJson()).toList();
     }
-    data['place_id'] = placeId;
-    data['reference'] = reference;
-    if(structuredFormatting!=null) {
-      data['structured_formatting'] = structuredFormatting!.toJson();
+    data['place_id'] = this.placeId;
+    data['reference'] = this.reference;
+    if(this.structuredFormatting!=null) {
+      data['structured_formatting'] = this.structuredFormatting!.toJson();
     }
-    if(terms!=null) {
-      data['terms'] = terms!.map((v) => v.toJson()).toList();
+    if(this.terms!=null) {
+      data['terms'] = this.terms!.map((v) => v.toJson()).toList();
     }
-    data['types'] =types;
+    data['types'] =this.types;
     return data;
     }
 }
@@ -98,9 +98,9 @@ class MatchedSubstrings{
   }
 
   Map<String,dynamic> toJson(){
-    final Map<String, dynamic> data = <String,dynamic>{};
-    data['length'] = length;
-    data['offset'] = offset;
+    final Map<String, dynamic> data = new Map<String,dynamic>();
+    data['length'] = this.length;
+    data['offset'] = this.offset;
     return data;
   }
 
@@ -118,9 +118,9 @@ class StructuredFormatting{
   }
 
   Map<String, dynamic> toJson(){
-    final Map<String, dynamic> data = <String,dynamic>{};
-    data['main_text'] = mainText;
-    data['secondary_text'] = secondaryText;
+    final Map<String, dynamic> data = new Map<String,dynamic>();
+    data['main_text'] = this.mainText;
+    data['secondary_text'] = this.secondaryText;
     return data;
   }
 
@@ -140,9 +140,9 @@ class Terms{
   }
 
   Map<String,dynamic> toJson(){
-    final Map<String,dynamic> data = <String,dynamic>{};
-    data['offset'] = offset;
-    data['value'] = value;
+    final Map<String,dynamic> data = new Map<String,dynamic>();
+    data['offset'] = this.offset;
+    data['value'] = this.value;
 
     return data;
   }

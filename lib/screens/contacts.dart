@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 class ContactsPage extends StatefulWidget {
   const ContactsPage({super.key});
@@ -14,38 +15,48 @@ class _ContactsPageState extends State<ContactsPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Contact> _contacts = [];
   List<Contact> _filteredContacts = [];
-  Set<String> _favoriteContacts = {};
+  Set<String> _trustedContacts = {};
   bool _isLoading = true;
   bool _permissionDenied = false;
 
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
+    _loadTrustedContacts();
     _fetchContacts();
   }
 
-  Future<void> _loadFavorites() async {
+  Future<void> _loadTrustedContacts() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _favoriteContacts = prefs.getStringList('favorites')?.toSet() ?? {};
+      _trustedContacts = prefs.getStringList('trusted_contacts')?.toSet() ?? {};
     });
   }
 
-  Future<void> _saveFavorites() async {
+  Future<void> _saveTrustedContacts() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('favorites', _favoriteContacts.toList());
+    await prefs.setStringList('trusted_contacts', _trustedContacts.toList());
   }
 
-  Future<void> _toggleFavorite(Contact contact) async {
+  Future<void> _toggleTrustedContact(Contact contact) async {
+    if (_trustedContacts.length >= 5 && !_trustedContacts.contains(contact.id)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can only have up to 5 trusted contacts'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
-      if (_favoriteContacts.contains(contact.id)) {
-        _favoriteContacts.remove(contact.id);
+      if (_trustedContacts.contains(contact.id)) {
+        _trustedContacts.remove(contact.id);
       } else {
-        _favoriteContacts.add(contact.id);
+        _trustedContacts.add(contact.id);
       }
     });
-    await _saveFavorites();
+    await _saveTrustedContacts();
   }
 
   Future<void> _fetchContacts() async {
@@ -74,106 +85,153 @@ class _ContactsPageState extends State<ContactsPage> {
     }
   }
 
-  void _filterContacts(String query) {
-    setState(() {
-      _filteredContacts = _contacts
-          .where((contact) =>
-          contact.displayName.toLowerCase().contains(query.toLowerCase()))
+  Future<void> _sendSOSToTrustedContacts() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high
+      );
+
+      final trustedContactsList = _contacts
+          .where((contact) => _trustedContacts.contains(contact.id))
           .toList();
-    });
-  }
 
-  Future<void> _makePhoneCall(String? phoneNumber) async {
-    if (phoneNumber == null || phoneNumber.isEmpty) return;
-    final Uri uri = Uri.parse('tel:$phoneNumber');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+      for (final contact in trustedContactsList) {
+        final phoneNumber = contact.phones.firstOrNull?.number;
+        if (phoneNumber != null) {
+          final message = 'EMERGENCY: I need help! My location: '
+              'https://www.google.com/maps?q=${position.latitude},${position.longitude}';
+
+          final Uri smsUri = Uri.parse('sms:$phoneNumber?body=${Uri.encodeComponent(message)}');
+          await launchUrl(smsUri);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error sending SOS messages: $e');
     }
   }
-
-  Future<void> _sendMessage(String? phoneNumber) async {
-    if (phoneNumber == null || phoneNumber.isEmpty) return;
-    final Uri uri = Uri.parse('sms:$phoneNumber');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-  }
-
-  List<Contact> get _favoriteContactsList => _contacts
-      .where((contact) => _favoriteContacts.contains(contact.id))
-      .toList();
 
   @override
   Widget build(BuildContext context) {
     if (_permissionDenied) {
       return Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Contact permission denied'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () async {
-                    setState(() {
-                      _isLoading = true;
-                      _permissionDenied = false;
-                    });
-                    await _fetchContacts();
-                  },
-                  child: const Text('Request Permission'),
-                ),
-              ],
-            ),
+        appBar: AppBar(
+          title: const Text('Contacts'),
+          backgroundColor: Colors.purple,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Contact permission denied'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  setState(() {
+                    _isLoading = true;
+                    _permissionDenied = false;
+                  });
+                  await _fetchContacts();
+                },
+                child: const Text('Request Permission'),
+              ),
+            ],
           ),
         ),
       );
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
+      body: Column(
           children: [
-            // Search and Add Contact Header
+      // App Bar with Search
+      Container(
+      padding: const EdgeInsets.fromLTRB(8, 35, 14, 10),
+      color: Colors.purple,
+
+      child: Row(
+          children: [
+      IconButton(
+      icon: const Icon(Icons.arrow_back, color: Colors.white),
+      onPressed: () => Navigator.pop(context),
+      ),
+            const SizedBox(width: 8),
+
+      Expanded(
+
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: const InputDecoration(
+            hintText: 'Search contacts...',
+            suffixIcon: Icon(Icons.search),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 20),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _filteredContacts = _contacts
+                  .where((contact) => contact.displayName
+                  .toLowerCase()
+                  .contains(value.toLowerCase()))
+                  .toList();
+            });
+          },
+        ),
+      ),
+            ),],
+            ),
+          ),
+
+          // Trusted Contacts Section
+          if (_trustedContacts.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(16),
-              color: Colors.white,
-              child: Row(
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: _filterContacts,
-                        decoration: const InputDecoration(
-                          hintText: 'Search',
-                          prefixIcon: Icon(Icons.search),
-                          border: InputBorder.none,
+                  const Row(
+                    children: [
+                      Icon(Icons.security, color: Colors.purple),
+                      SizedBox(width: 8),
+                      Text(
+                        'Trusted Contacts',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'These contacts will be notified in case of emergency',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.add, color: Colors.green[600]),
-                      onPressed: () async {
-                        try {
-                          await FlutterContacts.openExternalInsert();
-                          await _fetchContacts();
-                        } catch (e) {
-                          debugPrint('Error opening contact form: $e');
-                        }
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _contacts
+                          .where((c) => _trustedContacts.contains(c.id))
+                          .length,
+                      itemBuilder: (context, index) {
+                        final contact = _contacts
+                            .where((c) => _trustedContacts.contains(c.id))
+                            .toList()[index];
+                        return _buildTrustedContactCard(contact);
                       },
                     ),
                   ),
@@ -181,172 +239,104 @@ class _ContactsPageState extends State<ContactsPage> {
               ),
             ),
 
-            // User Profile Section (Smaller)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.white,
-              child: const Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20, // Reduced from 30
-                    child: Icon(Icons.person, size: 24), // Reduced icon size
-                  ),
-                  SizedBox(width: 12), // Reduced spacing
-                  Text(
-                    'My Contacts',
-                    style: TextStyle(
-                      fontSize: 16, // Reduced from 20
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
+          // Regular Contacts List
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+              itemCount: _filteredContacts.length,
+              itemBuilder: (context, index) {
+                final contact = _filteredContacts[index];
+                return _buildContactListTile(contact);
+              },
             ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Favorite Contacts Section (Only shown if there are favorites)
-            if (_favoriteContactsList.isNotEmpty)
-              SizedBox(
-                height: 115, // Increased height to prevent overflow
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _favoriteContactsList.length,
-                  itemBuilder: (context, index) {
-                    final contact = _favoriteContactsList[index];
-                    final firstPhone = contact.phones.firstOrNull?.number;
-
-                    return Container(
-                      width: 85, // Slightly increased width
-                      margin: const EdgeInsets.only(right: 8), // Reduced right margin
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          contact.photo != null
-                              ? CircleAvatar(
-                            radius: 24, // Reduced radius
-                            backgroundImage: MemoryImage(contact.photo!),
-                          )
-                              : CircleAvatar(
-                            radius: 24, // Reduced radius
-                            backgroundColor: Colors.blue[100],
-                            child: Text(
-                              contact.displayName[0],
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14, // Reduced font size
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            contact.displayName.split(' ')[0],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10), // Reduced font size
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                height: 24, // Fixed height for touch target
-                                width: 24, // Fixed width for touch target
-                                child: IconButton(
-                                  iconSize: 14,
-                                  padding: EdgeInsets.zero,
-                                  icon: Icon(Icons.phone, color: Colors.green[600]),
-                                  onPressed: () => _makePhoneCall(firstPhone),
-                                ),
-                              ),
-                              SizedBox(
-                                height: 24, // Fixed height for touch target
-                                width: 24, // Fixed width for touch target
-                                child: IconButton(
-                                  iconSize: 14,
-                                  padding: EdgeInsets.zero,
-                                  icon: Icon(Icons.message, color: Colors.blue[600]),
-                                  onPressed: () => _sendMessage(firstPhone),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+  Widget _buildTrustedContactCard(Contact contact) {
+    return Container(
+      width: 80,
+      margin: const EdgeInsets.only(right: 12),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Colors.purple.withOpacity(0.2),
+                backgroundImage: contact.photo != null ? MemoryImage(contact.photo!) : null,
+                child: contact.photo == null
+                    ? Text(
+                  contact.displayName[0],
+                  style: const TextStyle(
+                    fontSize: 24,
+                    color: Colors.purple,
+                  ),
+                )
+                    : null,
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.purple,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.verified,
+                    size: 12,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-
-            // Contacts List
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _filteredContacts.isEmpty
-                  ? const Center(child: Text('No contacts found'))
-                  : ListView.builder(
-                itemCount: _filteredContacts.length,
-                itemBuilder: (context, index) {
-                  final contact = _filteredContacts[index];
-                  final firstPhone = contact.phones.firstOrNull?.number;
-                  final isFavorite = _favoriteContacts.contains(contact.id);
-
-                  return ListTile(
-                    leading: contact.photo != null
-                        ? CircleAvatar(
-                      backgroundImage: MemoryImage(contact.photo!),
-                    )
-                        : CircleAvatar(
-                      backgroundColor: Colors.blue[100],
-                      child: Text(
-                        contact.displayName[0],
-                        style: const TextStyle(color: Colors.black87),
-                      ),
-                    ),
-                    title: Text(contact.displayName),
-                    subtitle: Text(
-                      firstPhone ?? 'No number',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: Padding(
-                      padding: const EdgeInsets.only(left: 20.0),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.phone, color: Colors.green[600]),
-                            onPressed: () => _makePhoneCall(firstPhone),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.message, color: Colors.blue[600]),
-                            onPressed: () => _sendMessage(firstPhone),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              isFavorite ? Icons.star : Icons.star_border,
-                              color: isFavorite ? Colors.amber : Colors.grey,
-                            ),
-                            onPressed: () => _toggleFavorite(contact),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            contact.displayName.split(' ')[0],
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactListTile(Contact contact) {
+    final phoneNumber = contact.phones.firstOrNull?.number;
+    final isTrusted = _trustedContacts.contains(contact.id);
+
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: isTrusted ? Colors.purple.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
+        backgroundImage: contact.photo != null ? MemoryImage(contact.photo!) : null,
+        child: contact.photo == null
+            ? Text(
+          contact.displayName[0],
+          style: TextStyle(
+            color: isTrusted ? Colors.purple : Colors.grey,
+          ),
+        )
+            : null,
+      ),
+      title: Text(contact.displayName),
+      subtitle: Text(phoneNumber ?? 'No number'),
+      trailing: IconButton(
+        icon: Icon(
+          isTrusted ? Icons.verified : Icons.verified_outlined,
+          color: isTrusted ? Colors.purple : Colors.grey,
         ),
+        onPressed: () => _toggleTrustedContact(contact),
       ),
     );
   }

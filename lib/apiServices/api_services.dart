@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 
 class ApiServices{
   Future<PlaceFromCoordinates> placeFromCoordinates(double lat, double lng) async{
-    Uri url = Uri.parse('https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$mapKey');
+    Uri url = Uri.parse('https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=${mapKey}');
     var response = await http.get(url);
 
     if(response.statusCode == 200){
@@ -19,7 +19,7 @@ class ApiServices{
   }
 
   Future<GetPlaces> getPlaces(String placeName) async{
-    Uri url = Uri.parse('https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$placeName&key=$mapKey');
+    Uri url = Uri.parse('https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$placeName&key=${mapKey}');
     var response = await http.get(url);
 
     if(response.statusCode == 200){
@@ -30,7 +30,7 @@ class ApiServices{
   }
 
   Future<GetCoordinatesFromPlaceId> getCoordinatesFromPlaceId (String placeId) async{
-    Uri url = Uri.parse('https://maps.googleapis.com/maps/api/place/details/json?placeid=$placeId&key=$mapKey');
+    Uri url = Uri.parse('https://maps.googleapis.com/maps/api/place/details/json?placeid=$placeId&key=${mapKey}');
     var response = await http.get(url);
 
     if(response.statusCode == 200){

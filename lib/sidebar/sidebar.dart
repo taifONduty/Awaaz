@@ -2,7 +2,7 @@ import 'package:awaaz/screens/chatListScreen.dart';
 import 'package:awaaz/screens/live_location_polyline.dart';
 import 'package:awaaz/sidebar/news.dart';
 import 'package:awaaz/sidebar/safetytips.dart';
-import 'package:awaaz/sidebar/selfdefense.dart';
+import 'package:awaaz/sidebar/self_defence.dart';
 import 'package:flutter/material.dart';
 import '../screens/connection_requests_screen.dart';
 import 'locations.dart';
@@ -44,7 +44,7 @@ class Sidebar extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SelfDefensePage()),
+                  MaterialPageRoute(builder: (context) => SelfDefencePage()),
                 );
               },
             ),

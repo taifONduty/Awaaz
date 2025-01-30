@@ -38,7 +38,7 @@ class _SafetyTipsPageState extends State<SafetyTipsPage> {
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (visibleTips < safetyTips.length) {
         setState(() {
           visibleTips++;

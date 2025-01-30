@@ -56,7 +56,7 @@ dependencies:
   geocoder2: ^1.4.0
   flutter_geofire: ^2.0.4
   flutter_polyline_points: ^1.0.0
-  location: ^8.0.0
+  location: ^7.0.1
   smooth_star_rating_nsafe: ^1.0.0+1
   animated_text_kit: ^4.2.2
   svg_flutter: ^0.0.1
@@ -100,6 +100,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/
     - assets/icons/
     - assets/icons/account.svg
     - assets/icons/id.svg
@@ -110,9 +111,12 @@ flutter:
     - assets/icons/default_profile.png
     - assets/icons/rokkha_icon.png
     - assets/sounds/ringtone.mp3
-    - assets/logo/img.png
-    - assets/logo/alert_marker.png
+    - assets/logo/
     - assets/logo1/
+    - assets/self-defence/3.webp
+    - assets/self-defence/4.webp
+    - assets/self-defence/5.webp
+    - assets/self-defence/6.webp
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

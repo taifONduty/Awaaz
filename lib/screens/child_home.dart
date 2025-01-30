@@ -3,8 +3,11 @@ import 'package:awaaz/screens/profile_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../assistants/IncomingCallPage.dart';
 import '../sidebar/sidebar.dart';
 import 'chatListScreen.dart';
@@ -99,6 +102,8 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
             'latitude': position.latitude,
             'longitude': position.longitude,
             'sos_active': true,
+            // 'parent_acknowledged': false,
+            // 'sos_timestamp': DateTime.now().toIso8601String(),
             'last_updated': DateTime.now().toIso8601String(),
           },
           onConflict: 'user_id'
@@ -115,6 +120,10 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
           .single();
 
       debugPrint('Found parent data: ${parentData.toString()}');
+
+      if (parentData == null) {
+        throw Exception('No parent found for this child');
+      }
 
       // Prepare notification payload
       final payload = {
@@ -150,6 +159,63 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
           ),
         );
       }
+
+      // Start 2-minute timer to check for parent acknowledgment
+      Future.delayed(const Duration(minutes: 2), () async {
+        try {
+          // Check if parent has acknowledged
+          final locationData = await supabase
+              .from('user_locations')
+              .select('parent_acknowledged')
+              .eq('user_id', user.uid)
+              .single();
+
+          if (locationData != null && locationData['parent_acknowledged'] == false) {
+            // Load trusted contacts from SharedPreferences
+            final prefs = await SharedPreferences.getInstance();
+            final trustedContactIds = prefs.getStringList('trusted_contacts') ?? [];
+
+            if (trustedContactIds.isNotEmpty) {
+              // Get all contacts
+              final contacts = await FlutterContacts.getContacts(
+                withProperties: true,
+                withPhoto: true,
+              );
+
+              // Filter trusted contacts
+              final trustedContacts = contacts
+                  .where((contact) => trustedContactIds.contains(contact.id))
+                  .toList();
+
+              // Send SMS to each trusted contact
+              for (final contact in trustedContacts) {
+                final phoneNumber = contact.phones.firstOrNull?.number;
+                if (phoneNumber != null) {
+                  final message = 'EMERGENCY: ${user.displayName ?? 'Your contact'} needs help! '
+                      'Location: https://www.google.com/maps?q=${position.latitude},${position.longitude}';
+
+                  final Uri smsUri = Uri.parse('sms:$phoneNumber?body=${Uri.encodeComponent(message)}');
+                  await launchUrl(smsUri);
+                }
+              }
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Parent unresponsive. Notifying trusted contacts.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error checking parent acknowledgment: $e');
+        }
+      });
+
+
+
     } catch (e, stackTrace) {
       debugPrint('Error in _sendSosAlert: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -213,24 +279,24 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ContactsPage()),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-        ),
-        child: const Text(
-          'Contacts',
-          style: TextStyle(
-            color: Colors.purple,
-            fontSize: 16,
-          ),
-        ),
-      ),
+      // child: ElevatedButton(
+      //   onPressed: () {
+      //     Navigator.push(
+      //       context,
+      //       MaterialPageRoute(builder: (context) => const ContactsPage()),
+      //     );
+      //   },
+      //   style: ElevatedButton.styleFrom(
+      //     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+      //   ),
+      //   child: const Text(
+      //     'Contacts',
+      //     style: TextStyle(
+      //       color: Colors.purple,
+      //       fontSize: 16,
+      //     ),
+      //   ),
+      // ),
     );
   }
 
