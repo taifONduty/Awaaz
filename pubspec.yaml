@@ -117,6 +117,11 @@ flutter:
     - assets/self-defence/4.webp
     - assets/self-defence/5.webp
     - assets/self-defence/6.webp
+    - assets/team-photos/auto.jpg
+    - assets/team-photos/taif.jpg
+    - assets/team-photos/talha.jpg
+    - assets/team-photos/tazkia.jpg
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
