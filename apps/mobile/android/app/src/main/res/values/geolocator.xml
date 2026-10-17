@@ -1,0 +1,5 @@
+<resources>
+    <!-- Flutter captures foreground fixes only. TripMonitorService owns Awaaz's
+         background session, notification, location lease and explicit stop. -->
+    <bool name="geolocator_bind_foreground_service">false</bool>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <!-- Preserve upstream behavior unless the consuming app owns background
+         location separately and explicitly opts out through resource merging. -->
+    <bool name="geolocator_bind_foreground_service">true</bool>
+</resources>

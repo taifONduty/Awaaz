@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# New services and local credentials
+**/node_modules/
+**/.env
+**/.env.*
+**/.env.local
+**/.env.production
+!**/.env.example
+!**/.env.evidence.example
+.local/
+**/backend.local.json

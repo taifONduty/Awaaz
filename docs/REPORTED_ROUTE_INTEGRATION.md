@@ -1,0 +1,39 @@
+# Reviewed-report route choices
+
+Implemented 14 October 2026. The private [evidence weighting engine](EVIDENCE_ROUTING_ENGINE.md) now connects to the public route API and Flutter geographic repository. This feature remains an experimental comparison of reported observations; safety assessment is unknown.
+
+## API and worker
+
+`WorkerRouting` replaces the HTTP routing transport when `AWAAZ_ROUTING_JAVA` supplies an absolute JDK executable path. It owns one read-only Java worker for both static-time and evidence-weighted searches, rather than starting a second HTTP engine for the same graph. Worker readiness is separate from account/database readiness. Shutdown closes only its owned process. The confirmed graph manifest and pinned engine/cache checks remain mandatory.
+
+`AWAAZ_EXPERIMENTAL_EVIDENCE_ROUTING=true` enables experimental alternatives. It defaults off in `.env.example`; no production safety validation is implied. A request to `POST /v1/routes` may set `includeReports: true`. Ordinary requests remain valid and return fastest routing. The existing anonymous ephemeral planning/no-store contract is retained; no trip history or contact sharing is created.
+
+When live evidence exists, the response compares the fastest static-time route with the weighted choice under one evidence snapshot. Both use the same imported graph. Identical alternatives are deduplicated. `reportRouting.status` distinguishes available, no evidence, unavailable, disabled and same-route states. Failure of the optional evidence path returns an explicitly unavailable alternative status alongside the real fastest route; it never invents an alternative.
+
+Each route may include `reportedEvidenceFraction`: the fraction of its actual geometry length associated with reviewed observations. This is not safety probability or calibrated risk. Global `riskLevel` remains `unknown` and `evidenceCoverage` remains null. A snapshot-backed plan carries `riskVersion: reviewed-decay-v1:<snapshot UUID>` and expires no later than its two-minute evidence lease. Ordinary plans retain `unknown-v1` and the five-minute lease. Epoch/digest/expiry are checked during calculation and again while coverage is captured; updated/withdrawn evidence cannot be served as the old version.
+
+## Mobile and consent
+
+The geographic repository requests alternatives, validates both route DTOs, preserves null safety assessment, validates coverage separately and rejects mismatched/expired leases, duplicate IDs or displaced geometry. Route choices bind immutable approved corridors with graph/risk versions and expiry. Selecting a choice updates the map; start monitoring captures that selected corridor. Later reports cannot silently replace the active native baseline.
+
+The picker labels the choices Fastest and Fewer reported issues, with travel time and observed-route coverage separately. English/Bangla copy calls the comparison experimental, leaves unreported streets unknown and avoids guarantees. Test fixtures set `reportRouting.synthetic: true`; the UI labels their observations as test reports, not live Dhaka incidents. A prominent details action explains synthetic data, uncertainty and static time estimates.
+
+Initial emulator review found disclosure text below the fold and coverage/duration crowding. The layout was revised to show disclosure above a compact map, space the rows and remove duplicate selected-route metrics. Installed English/Bangla review confirms both choices and the primary action fit at 360 dp. The disclosure dialog explains synthetic reports, unreported-street uncertainty and static estimates in both languages. Selecting the reported choice changes the actual map geometry.
+
+The selected 6 min / 2.9 km reported choice armed `TripMonitorService` with foreground notification 7101. Eight emulated off-route fixes over 35 seconds produced private check-in notification 7102 while the emulator was asleep. Acknowledgement kept the selected route; End journey returned to Explore with no native monitor service. Review caught a further hierarchy problem: monitor status and its check-in controls were below the map. Those controls now precede the map. The final APK repeated the screen-off notification check; installed English/Bangla review confirms the check-in and acknowledgement action are visible without scrolling. End journey removed the native service and both notifications. The emulator is left on English Explore with monitoring off; the fixture routing worker is ready.
+
+The final debug APK builds in 177.3 seconds, is 108,413,278 bytes and has SHA-256 `B38D378099B3CC21E3CCC071C6ED565AE3E3652477893C59ECE2A2D53604ED7B`. Installed review confirms active monitor status appears above the map, with the fixed End journey control reachable. Earlier visual builds took 227.5 and 207.2 seconds; they are superseded by this APK.
+
+Cold-boot review encountered a System UI ANR followed by an Awaaz focus-dispatch ANR at 22:33:55. Android reported 98% total CPU, substantial kernel/swapping activity and a Flutter/native wait in the sampled main-thread stack; that sampling does not establish the cause. Restarting only Awaaz after boot settled restored working map browsing, destination selection, planning and monitor arming. This cold-start performance finding remains unresolved and must not be described as fixed or dismissed as an emulator-only issue without further profiling. Host memory was about 732 MiB free of 6 GiB at inspection. Physical-device and release-mode profiling remain required.
+
+Installed evidence: [English choices](ui-redesign/reported-routes-english-android.png), [Bangla choices](ui-redesign/reported-routes-bangla-android.png), [Bangla disclosure](ui-redesign/reported-disclosure-bangla-android.png), [visible active status](ui-redesign/reported-monitor-visible-android.png), [visible check-in](ui-redesign/reported-checkin-visible-android.png), [Bangla check-in](ui-redesign/reported-checkin-bangla-android.png). These are actual emulator captures, not generated mockups. The existing Figma file has not been synchronized with this increment.
+
+## Local fixture and verification
+
+The Android fixture backend can use the same worker through its restricted SQL evidence store. Its test-only corridor endpoint submits, reviews and publishes synthetic observations on actual baseline-route edges and rebuilds a live snapshot. It is loopback-only and is never a production entry point. A separate witness preserves the existing Alice report/restart scenarios. The snapshot worker remains serialized and supervised by fixture shutdown.
+
+The extended real-graph diagnostic verifies the HTTP response has two routes, distinct geometry, an explicit synthetic marker, null safety assessment, differing observed-route coverage and the shortened lease. The engine checks still include six A*/Dijkstra matches, virtual-fragment penalties, digest rejection and a live epoch change during search. All 22 existing API checks, 20 database test nodes and 78 Flutter cases pass. Flutter's existing geographic DTO case was extended to cover the new contract; no test cases were added. After moving the native panel, analysis is clean and all 22 existing UI/monitor checks pass. The six-case Android restart suite was not rerun for this route/UI increment; its earlier snapshot-stage evidence remains separate.
+
+## Release work
+
+The baseline/index, influence caps, missing coverage and mode applicability need independent calibration and moderation quality review. [Supervised refresh and artifact retention](EVIDENCE_WORKER.md) are implemented; actual deployment/monitoring, comprehensive address geocoding, hosted Auth, physical-device/OEM monitoring, sharing and emergency delivery remain unfinished. This implementation does not train a model or establish the safest route for a person.

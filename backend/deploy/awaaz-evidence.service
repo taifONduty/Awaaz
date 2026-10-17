@@ -1,0 +1,31 @@
+# Review paths, installed Node 24, users/groups, CA and private volume ownership.
+# Template only; not installed or validated on this Windows development host.
+[Unit]
+Description=Awaaz reviewed-evidence refresh worker
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=awaaz-evidence
+Group=awaaz-routing
+WorkingDirectory=/opt/awaaz/apps/api
+EnvironmentFile=/etc/awaaz/evidence.env
+ExecStart=/usr/bin/node --max-old-space-size=256 scripts/run-evidence-worker.ts
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=150
+UMask=0007
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/awaaz/evidence
+MemoryMax=384M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

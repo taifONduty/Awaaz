@@ -1,0 +1,23 @@
+# Journey UI integration, 14 October 2026
+
+The active journey now uses a compact destination heading, map context, planned route estimate and reachable controls. It follows the map-first hierarchy and grouped footer controls seen in Google's [published navigation screenshots](https://apps.apple.com/us/app/google-maps/id585027354), inspected in the browser during this increment. These are references, not shipped assets. The Mobbin connector returned an unavailable-tool error; it was not used as evidence. Awaaz retains its Material controls, bundled fonts, teal accent and existing light theme.
+
+Preview routes still use an explicitly labelled diagram. Their estimate is labelled as planned, never a live countdown. They cannot arm background monitoring. Native journeys do not reuse the invented diagram or Farmgate endpoint labels. Real route geometry and destination/origin lookup remain the next integration work; Google Maps on Explore is already real.
+
+Native journeys compose the current monitor snapshot once in the journey screen. Waiting/unreliable location, active checks, check-in and command failures have distinct copy. The check-in action preserves the original corridor; it does not approve a replacement or notify contacts. A compact monitor panel remains visible on other tabs. The persistent status reflects actual on-device checks rather than claiming that no tracking is running. Sharing and contact delivery remain off.
+
+Starting a route with an approved corridor requires a contextual confirmation before requesting notification/location access. Cancelling performs no GPS acquisition or native start. The selected route and account are checked again before and after arming. Tab/back/planning controls cannot change the intent while a native command is pending.
+
+Ending a journey waits for the native stop response and verifies that its snapshot is inactive. An exception or an active response keeps the journey visible with a retryable failure. A pending stop disables duplicate controls and says “Stopping monitoring”. The selected baseline and retry nonce are not cleared by an unconfirmed stop. Account changes still clear private UI and use the existing native owner-binding boundary.
+
+## Verification
+
+The 22 existing UI/monitor cases pass. The existing Bangla check-in case now scrolls to and actually activates its acknowledgement button, verifies the resulting tracking state, and exercises the main journey's consent cancellation, stop failure and delayed stop response. The existing command case rejects a stop response that still says active. No test cases or new test framework were added. Small/large layouts and 200% English/Bangla text remain covered by the existing UI cases.
+
+Final static analysis is clean (9.4 seconds). The preview APK builds in 261.7 seconds, is installed and reviewed at 360 dp on the owned Android 36 emulator. Its SHA-256 is `bd4a081af185e90e1e395b23edfbe67301c30c2a156f6faa0ab54150e5cabcd2`.
+
+Installed review confirms real Dhaka tiles and the traffic toggle with provider traffic lines, the compact English/Bangla journey screens, reachable finish controls, the simulated check-in, keeping the original route, and return to English Explore after ending. Evidence: [journey](ui-redesign/journey-v4-android.png), [Bangla journey](ui-redesign/journey-v4-bangla-android.png), [check-in](ui-redesign/checkin-v4-android.png), [real map and traffic](ui-redesign/google-maps-current-android.png). Maps location/gesture controls have their preceding verification in [Maps integration](GOOGLE_MAPS_INTEGRATION.md); those full checks were not repeated here. No native trip service is active at the end.
+
+This cold boot showed a System UI ANR, recovered through its Wait action. A native-monitor lookup failure also remained visible on Explore and was cleared through the explicit Stop action. Its exact cause was not diagnosed in this increment. Early UIAutomator dumps returned null roots or did not match the subsequently captured frame, so screenshots were used to confirm the current controls. These recovery observations do not establish smooth physical-device startup.
+
+Kotlin service and backend logic were unchanged; their preceding native screen-off, restart and SQL evidence is recorded in [verification](VERIFICATION.md), not treated as a fresh run here. Native main-journey consent and stop-failure handling were checked with the existing host widget flow, not with ordinary real routes on Android; those still have no approved corridor. This increment does not validate real routes, hosted Auth, contact delivery or physical-phone/OEM behavior. The Figma design has not been synchronized with these changes.

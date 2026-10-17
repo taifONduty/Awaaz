@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Safe-zone inset of the same existing Material shield. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="960" android:viewportHeight="960">
+    <path android:fillColor="#F5F6F7" android:pathData="M0,0 H960 V960 H0 Z" />
+    <group android:translateX="180" android:translateY="180" android:scaleX="0.625" android:scaleY="0.625">
+        <group android:translateY="960">
+            <path android:fillColor="#0C5B49" android:pathData="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z" />
+        </group>
+    </group>
+</vector>
